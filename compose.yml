@@ -1,0 +1,23 @@
+version: "2"
+
+services:
+    tarantool:
+        image: tarantool/tarantool:2.10
+
+        environment:
+            TARANTOOL_USER_NAME: tnt
+            TARANTOOL_USER_PASSWORD: tnt
+            TARANTOOL_SLAB_ALLOC_ARENA: 0.1
+
+        volumes:
+            - ./packages/tnt/app.lua:/opt/tarantool/app.lua
+            - tarantool:/var/lib/tarantool
+
+        command: ["tarantool", "app.lua"]
+
+        ports:
+            - "3301:3301"
+
+volumes:
+    tarantool:
+        driver: "local"
