@@ -4,7 +4,9 @@ import getTarantool from "../tnt";
 
 export type GetUserResponse = TntUserInfo;
 export type GetUserError = JsonRpcError<1000, "GetUserError">;
-export type GetUserRequest = {};
+export type GetUserRequest = {
+    userId: string;
+};
 
 export async function handleGetUser(
     ws: ServerWebSocket<WebSocketData>,
@@ -12,5 +14,5 @@ export async function handleGetUser(
 ): Promise<GetUserResponse> {
     console.log("handleGetUser", data);
     let tnt = await getTarantool();
-    return await tnt.getUserInfo(ws.data.userId);
+    return await tnt.getUserInfo(data.userId);
 }
