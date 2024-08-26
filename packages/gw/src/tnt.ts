@@ -53,6 +53,16 @@ class Client {
         throw new Error("User not found");
     }
 
+    async initUserInfo(userId: string): Promise<TntUserInfo> {
+        console.log("InitUser", userId);
+        let result = await this.tarantool.call("get_or_create_user_from_tg", userId);
+        console.log("initUser result", result);
+        if (result && result.length > 0) {
+            return result[0];
+        }
+        throw new Error("User not found");
+    }
+
     async createUserFromTg(tg_id: number): Promise<TntUserInfo> {
         console.log("createUserFromTg", tg_id);
         let result = await this.tarantool.call(

@@ -13,6 +13,7 @@ import {
 } from "./types";
 import { Elysia, t } from "elysia";
 import staticPlugin from "@elysiajs/static";
+import { handleInitUser } from "./handlers/init_user";
 
 const app = new Elysia()
     .use(staticPlugin())
@@ -72,6 +73,9 @@ const app = new Elysia()
                         break;
                     case "getTopUsers":
                         result = await handleGetTopUsers(ws, message.params);
+                        break;
+                    case "initUser":
+                        result = await handleInitUser(ws, message.params);
                         break;
                     default:
                         throw new JsonRpcBaseError(
