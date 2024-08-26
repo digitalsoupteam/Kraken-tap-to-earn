@@ -19,6 +19,6 @@ export async function handleSendTaps(
     console.log("handleSendTaps", data.taps);
     let tnt = await getTarantool();
     return await tnt.registerTaps([
-        { userId: ws.data.userId, taps: data.taps },
+        { user_id: data.userId, taps: data.taps },
     ]);
 }

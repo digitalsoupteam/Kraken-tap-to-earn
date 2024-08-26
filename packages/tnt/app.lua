@@ -282,8 +282,16 @@ function register_taps(batch)
     local now = os.time()
     for i = 1, #batch do
         results[i] = { nil, nil }
-        if type(batch[i]) ~= 'table' or batch[i].user_id == nil or batch[i].taps == nil or #batch[i].taps == 0 or type(batch[i].taps) ~= 'table' then
-            results[i].error = 'invalid batch item'
+        if type(batch[i]) ~= 'table' then
+            results[i].error = 'invalid batch item1'
+        elseif batch[i].user_id == nil then
+            results[i].error = 'invalid batch item2'
+        elseif batch[i].taps == nil then
+            results[i].error = 'invalid batch item3'
+        -- elseif #batch[i].taps == 0  then
+        --     results[i].error = 'invalid batch item4'
+        elseif type(batch[i].taps) ~= 'table' then
+            results[i].error = 'invalid batch item5'
         else
             local user_id = batch[i].user_id
             local taps = batch[i].taps

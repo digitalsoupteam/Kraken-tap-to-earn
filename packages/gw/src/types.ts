@@ -92,7 +92,7 @@ export type AllErrorTypes =
 // Tarantool types
 
 export type TntRegisterTaps = {
-    userId: string;
+    user_id: string;
     taps: {
         x: number;
         y: number;
