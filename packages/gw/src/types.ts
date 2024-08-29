@@ -1,5 +1,6 @@
 // Websocket types
 
+import { ServerWebSocket } from "bun";
 import type {
     GetTopUsersError,
     GetTopUsersRequest,
@@ -15,6 +16,9 @@ import type {
     SendTapsRequest,
     SendTapsResponse,
 } from "./handlers/send_taps";
+import { TypeCheck } from "elysia/dist/type-system";
+import { ElysiaWS } from "elysia/dist/ws";
+import { TSchema } from "elysia";
 
 //
 export type WebSocketData = {
@@ -23,6 +27,14 @@ export type WebSocketData = {
     userId: string;
     authToken: string;
 };
+
+export type WS = ElysiaWS<
+    ServerWebSocket<{
+        validator?: TypeCheck<TSchema>;
+    }>,
+    any,
+    any
+>;
 
 // JsonRPC types
 
@@ -92,7 +104,7 @@ export type AllErrorTypes =
 // Tarantool types
 
 export type TntRegisterTaps = {
-    user_id: string;
+    userId: string;
     taps: {
         x: number;
         y: number;
@@ -119,4 +131,5 @@ export type TntUserInfo = {
     sessionTapsLeft: number;
     taps: number;
     calmUntil: number;
+    refUser: TntUserInfo | null;
 };

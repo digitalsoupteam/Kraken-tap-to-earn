@@ -1,7 +1,10 @@
 #!/usr/bin/env tarantool
 local uuid = require('uuid')
+local log = require("log")
+local json = require('json')
 local aggregation_periods = { 86400, 604800, 2592000, 7776000 }
 
+log.cfg { format = 'json', level = 'verbose' }
 box.cfg {}
 box.once('schema', function()
     box.schema.sequence.create('user_id_seq')
@@ -38,9 +41,11 @@ box.once('schema', function()
         { name = 'session_until',    type = 'number' },
         { name = 'taps',             type = 'number' },
         { name = 'nickname',         type = 'string' },
+        { name = "ref_user_id",      type = "integer" },
     })
     users:create_index('user_id', { sequence = 'user_id_seq' })
     users:create_index('external_user_id', { parts = { { 'external_user_id' } }, unique = true })
+    users:create_index('ref_user_id', { parts = { { 'ref_user_id' }, { 'taps' } }, unique = false })
     users:create_index('taps', { parts = { { 'taps' } }, unique = false })
 
     local tg2user = box.schema.create_space('tg2user', { engine = 'vinyl' })
@@ -69,10 +74,15 @@ box.once('schema', function()
     levels:create_index('pk', { parts = { { 'level' } }, unique = true })
 end)
 
+local settings = {
+    referrer_bps = 2500,
+    max_bps = 10000,
+}
+
 
 --- @alias levels {id: number, quota_period: number, quota_amount: number, calm_period: number}
 --- @alias user {user_id: number, external_user_id: string, is_blocked: boolean, level: number, session_until: number, session_taps: number, taps: number, nickname: string}
---- @alias userInfo {id: number, user_id: string, is_blocked: boolean, level: levels, nickname: string, session_start: number, session_left: number, session_until: number, session_taps: number, session_taps_left: number, taps: number, calm_until: number}
+--- @alias userInfo {id: number, user_id: string, is_blocked: boolean, level: levels, nickname: string, session_start: number, session_left: number, session_until: number, session_taps: number, session_taps_left: number, taps: number, calm_until: number, ref_user: userInfo | nil}
 
 
 --- Update levels
@@ -130,7 +140,7 @@ end
 
 -- Get user using uuid or number
 --- @param user_id string|number
---- @return user
+--- @return user | nil
 function get_user(user_id)
     local user
     if type(user_id) == 'number' then
@@ -139,7 +149,10 @@ function get_user(user_id)
         local external_user_id = uuid.fromstr(user_id)
         user = box.space.users.index.external_user_id:get({ external_user_id })
     end
-    return user
+    if user == nil then
+        return nil
+    end
+    return user:tomap({ names_only = true })
 end
 
 --- Update user
@@ -170,20 +183,62 @@ end
 
 --- Create new user
 --- @return number
-function create_new_user()
+function create_new_user(ref_user_id)
     local levels = get_or_create_levels(1)
-    local new_user = box.space.users:insert({ box.NULL, uuid.new(), false, 1, 0, 0, 0, '' })
+    local new_user = box.space.users:insert({
+        box.NULL,
+        uuid.new(),
+        false,
+        1,
+        0,
+        0,
+        0,
+        '',
+        ref_user_id
+    })
     return new_user[1]
+end
+
+--- create anonymous user
+--- @param ref_user_external_id string | nil
+--- @return userInfo
+function create_anonymous_user(ref_user_external_id)
+    local ref_user_id = 0
+    log.info('create anonymous user')
+    if ref_user_external_id ~= nil then
+        log.info('ref_user_external_id: %s', ref_user_external_id)
+        local ref_user = get_user(ref_user_external_id)
+        if ref_user == nil then
+            error('ref user not found')
+        end
+        ref_user_id = ref_user.user_id
+    end
+
+    local user_id = create_new_user(ref_user_id)
+    local user = get_user_info(user_id)
+    if user == nil then
+        error('user not found')
+    end
+    return user
 end
 
 --- Get or create user from telegram id
 --- @param id string
+--- @param ref_user_external_id string | nil
 --- @return userInfo
-function get_or_create_user_from_tg(id)
+function get_or_create_user_from_tg(id, ref_user_external_id)
+    local ref_user_id = 0
+    if ref_user_external_id ~= nil then
+        local ref_user = get_user(ref_user_external_id)
+        if ref_user == nil then
+            error('ref user not found')
+        end
+        ref_user_id = ref_user.user_id
+    end
     local res = box.space.tg2user.index.pk:get(id)
     local user_id
     if res == nil then
-        user_id = create_new_user()
+        user_id = create_new_user(ref_user_id)
         box.space.tg2user:insert({ id, user_id })
     else
         user_id = res.user_id
@@ -197,8 +252,9 @@ end
 
 -- user info from user item
 -- @param user user
+-- @param skip_ref_user boolean
 -- @return userInfo | nil
-function to_user_info(user)
+function to_user_info(user, skip_ref_user)
     local level = get_or_create_levels(user.level)
     local is_blocked = user.is_blocked
     local nickname = user.nickname
@@ -221,9 +277,14 @@ function to_user_info(user)
         session_start = user.session_until - level.quota_period
     else
         if user.session_taps > 0 then
-            box.space.users:update({ user.user_id }, { { '=', 'session_taps', 0 }, { '=', 'session_until', 0 } })
+            log.warn('user %s session taps not expired %s', user.user_id, json.encode(user))
+            -- print user using pairs
+            for i, v in pairs(user) do
+                log.warn('\tuser %s = %s', i, v)
+            end
             user.session_taps = 0
             user.session_until = 0
+            box.space.users:update({ user.user_id }, { { '=', 'session_taps', 0 }, { '=', 'session_until', 0 } })
         end
         left = level.quota_period
         taps_left = level.quota_amount
@@ -244,19 +305,45 @@ function to_user_info(user)
         session_taps = user.session_taps,
         session_taps_left = taps_left,
         taps = user.taps,
+        ref_user = nil,
     }
+    if skip_ref_user ~= true and user.ref_user_id ~= nil then
+        local ref_user = get_user_info(user.ref_user_id, true)
+        result.ref_user = ref_user
+    end
     return result
 end
 
--- Get user info
--- @param user_id string
--- @return userInfo | nil
-function get_user_info(user_id)
+---Get user info
+---@param user_id string
+---@param skip_ref_user boolean
+---@return userInfo | nil
+function get_user_info(user_id, skip_ref_user)
     local user = get_user(user_id)
     if user == nil then
         return nil
     end
-    return to_user_info(user)
+    return to_user_info(user, skip_ref_user)
+end
+
+---Get top 100 Referred users
+---@param by_user_id string
+---@param limit number
+---@return userInfo[]
+function get_top_referrals(by_user_id, limit)
+    if type(limit) ~= 'number' then
+        limit = 100
+    end
+    local user = get_user(by_user_id)
+    if user == nil then
+        error('user not found')
+    end
+    local users = box.space.users.index.ref_user_id:select({ user.user_id }, { limit = limit, iterator = 'REQ' })
+    local results = {}
+    for i = 1, #users do
+        results[i] = to_user_info(users[i]:tomap(), true)
+    end
+    return results
 end
 
 ---Get top 100 users
@@ -269,7 +356,7 @@ function get_top_users(limit)
     local users = box.space.users.index.taps:select({}, { limit = limit, iterator = 'REQ' })
     local results = {}
     for i = 1, #users do
-        results[i] = to_user_info(users[i])
+        results[i] = to_user_info(users[i]:tomap())
     end
     return results
 end
@@ -282,16 +369,8 @@ function register_taps(batch)
     local now = os.time()
     for i = 1, #batch do
         results[i] = { nil, nil }
-        if type(batch[i]) ~= 'table' then
-            results[i].error = 'invalid batch item1'
-        elseif batch[i].user_id == nil then
-            results[i].error = 'invalid batch item2'
-        elseif batch[i].taps == nil then
-            results[i].error = 'invalid batch item3'
-        -- elseif #batch[i].taps == 0  then
-        --     results[i].error = 'invalid batch item4'
-        elseif type(batch[i].taps) ~= 'table' then
-            results[i].error = 'invalid batch item5'
+        if type(batch[i]) ~= 'table' or batch[i].user_id == nil or batch[i].taps == nil or #batch[i].taps == 0 or type(batch[i].taps) ~= 'table' then
+            results[i].error = 'invalid batch item'
         else
             local user_id = batch[i].user_id
             local taps = batch[i].taps
@@ -302,7 +381,7 @@ function register_taps(batch)
                 results[i].error = 'user not found'
             else
                 results[i].user_info = user_info
-                if user_info.left == 0 then
+                if user_info.session_left == 0 then
                     results[i].error = 'time quota exceeded'
                 elseif user_info.session_taps_left == 0 then
                     results[i].error = 'taps quota exceeded'
@@ -336,6 +415,12 @@ function register_taps(batch)
                     end
 
                     box.space.users:update({ user_info.id }, user_updates)
+                    if user_info.ref_user ~= nil then
+                        box.space.users:update(
+                            { user_info.ref_user.id },
+                            { { '+', 'taps', inserted_taps * settings.referrer_bps / 10000 } }
+                        )
+                    end
                 end
                 results[i].user_info['session_taps'] = user_info['session_taps'] + inserted_taps
                 results[i].user_info['taps'] = user_info['taps'] + inserted_taps

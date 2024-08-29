@@ -1,5 +1,5 @@
 import type { ServerWebSocket } from "bun";
-import type { WebSocketData, TntUserInfo, JsonRpcError } from "../types";
+import type { WebSocketData, TntUserInfo, JsonRpcError, WS } from "../types";
 import getTarantool from "../tnt";
 
 export type SendTapsResponse = { userInfo: TntUserInfo; error?: string }[];
@@ -13,12 +13,9 @@ export type SendTapsRequest = {
 };
 
 export async function handleSendTaps(
-    ws: ServerWebSocket<WebSocketData>,
+    ws: WS,
     data: SendTapsRequest
 ): Promise<SendTapsResponse> {
-    console.log("handleSendTaps", data.taps);
     let tnt = await getTarantool();
-    return await tnt.registerTaps([
-        { user_id: data.userId, taps: data.taps },
-    ]);
+    return await tnt.registerTaps([data]);
 }

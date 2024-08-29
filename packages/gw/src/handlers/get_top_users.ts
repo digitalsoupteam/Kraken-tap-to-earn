@@ -1,5 +1,5 @@
 import type { ServerWebSocket } from "bun";
-import type { WebSocketData, TntUserInfo, JsonRpcError } from "../types";
+import type { WebSocketData, TntUserInfo, JsonRpcError, WS } from "../types";
 import getTarantool from "../tnt";
 
 export type GetTopUsersResponse = TntUserInfo[];
@@ -9,7 +9,7 @@ export type GetTopUsersRequest = {
 };
 
 export async function handleGetTopUsers(
-    ws: ServerWebSocket<WebSocketData>,
+    ws: WS,
     data: GetTopUsersRequest
 ): Promise<GetTopUsersResponse> {
     console.log("handleGetTopUsers", data);
