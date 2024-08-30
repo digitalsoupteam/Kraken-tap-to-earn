@@ -1,6 +1,42 @@
+# Base
+
+```ts
+BASE_URL = 'https://game.releasethekraken.io/backend'
+```
+
+# Athorization
+
+### POST /api/anonymous_session
+```ts
+REQUEST {
+    referrer_id: string | undefined
+}
+RESPONSE {
+    jwt: string
+}
+```
+
+
+### POST /api/telegram_session
+```ts
+REQUEST {
+    initData: string
+    referrer_id: string | undefined
+}
+RESPONSE {
+    jwt: string
+}
+```
+
+
 # Websocet
 
-url: wss://host:3000/ws
+```ts
+BASE_URL = 'wss://game.releasethekraken.io/backend/ws'
+QUERY {
+    jwt: string
+}
+```
 
 ## Structs:
 
@@ -29,9 +65,9 @@ url: wss://host:3000/ws
     sessionTapsLeft: number;
     taps: number;
     calmUntil: number;
+    refUser: User | null;
 }
 ```
-
 
 
 ## Methods:
@@ -46,48 +82,113 @@ url: wss://host:3000/ws
 }
 ```
 
-### sendTaps: 
-```ts
-request payload = {
-    "jsonrpc": "2.0",
-    "id": 1,
-    "method": "sendTaps",
-    "params": {
-        "userId": "string",
-        "taps": [
-            {
-                "x": 178.15,
-                "y": 250.01
-            },
-            ...
-        ]
-    },
-}
 
-return Array<{ userInfo: User; error?: string }>
-```
 
-### getUser: 
+
+### getUser
 ```ts
-request payload = {
+REQUEST {
     "jsonrpc": "2.0",
     "id": 1,
     "method": "getUser"
 }
-
-return User
+RESPONSE {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "result": User | undefined,
+    "error": undefined | Error,
+}
 ```
 
-### getTopUsers: 
+### sendTaps
 ```ts
-request payload = {
+REQUEST {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "sendTaps",
+    "params": [
+        {
+            x: number,
+            y: number
+        }
+    ]
+}
+RESPONSE {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "result": {
+        userInfo: User,
+        error?: string
+    },
+    "error": undefined | Error,
+}
+```
+
+### updateProfile
+```ts
+REQUEST {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "updateProfile",
+    "params": {
+        nickName?: string,
+        wallet?: string
+    }
+}
+RESPONSE {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "result": [
+        {
+            userInfo: User,
+            error?: string
+        }
+    ],
+    "error": undefined | Error,
+}
+```
+
+### getTopUsers
+```ts
+REQUEST {
     "jsonrpc": "2.0",
     "id": 1,
     "method": "getTopUsers",
     "params": {
-        "limit": 100,
+        limit: number,
     }
 }
+RESPONSE {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "result": [
+        User, 
+        User, 
+        ...
+    ],
+    "error": undefined | Error,
+}
+```
 
-return Array<User>
+
+### getTopReferrals
+```ts
+REQUEST {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "getTopReferrals",
+    "params": {
+        limit: number,
+    }
+}
+RESPONSE {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "result": [
+        User, 
+        User, 
+        ...
+    ],
+    "error": undefined | Error,
+}
 ```
