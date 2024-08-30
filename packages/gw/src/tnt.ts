@@ -92,6 +92,15 @@ class Client {
         return toCamelCase(result[0][0]) as any;
     }
 
+    async updateProfile(
+        userId: string,
+        data: { nickname?: string; wallet?: string }
+    ) {
+        console.log("updateProfile", userId, data);
+        let result = await this.tarantool.call("update_user", userId, data);
+        return toCamelCase(result[0][0]) as any;
+    }
+
     async createUserFromTg(
         tg_id: number,
         referrer_id?: string

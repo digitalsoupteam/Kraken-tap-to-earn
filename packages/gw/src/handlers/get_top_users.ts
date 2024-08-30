@@ -1,13 +1,16 @@
-import type { ServerWebSocket } from "bun";
-import type { WebSocketData, TntUserInfo, JsonRpcError, WS } from "../types";
+import { t, Static } from "elysia";
+import type { TntUserInfo, JsonRpcError, WS } from "../types";
 import getTarantool from "../tnt";
 
 export type GetTopUsersResponse = TntUserInfo[];
-export type GetTopUsersError = JsonRpcError<1000, "GetTopUsersError">;
-export type GetTopUsersRequest = {
-    limit: number;
-};
-
+export type GetTopUsersError = JsonRpcError<1003, "GetTopUsersError">;
+export const SchemaGetTopUsers = t.Object(
+    {
+        limit: t.Number(),
+    },
+    { additionalProperties: false }
+);
+export type GetTopUsersRequest = Static<typeof SchemaGetTopUsers>;
 export async function handleGetTopUsers(
     ws: WS,
     data: GetTopUsersRequest

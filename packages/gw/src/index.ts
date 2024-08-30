@@ -1,8 +1,8 @@
 import { watch } from "fs";
 import html from "bun-plugin-html";
-import { handleGetTopUsers } from "./handlers/get_top_users";
+import { handleGetTopUsers, SchemaGetTopUsers } from "./handlers/get_top_users";
 import { handleGetUser } from "./handlers/get_user";
-import { handleSendTaps } from "./handlers/send_taps";
+import { handleSendTaps, SchemaSendTaps } from "./handlers/send_taps";
 import { jwt } from "@elysiajs/jwt";
 import {
     AllErrorTypes,
@@ -21,7 +21,14 @@ import {
     decodeInitData,
     verifyTelegramWebAppInitData,
 } from "./initData";
-import { handleGetTopReferrals } from "./handlers/get_top_referrals";
+import {
+    handleGetTopReferrals,
+    SchemaGetTopReferrals,
+} from "./handlers/get_top_referrals";
+import {
+    handleSendUpdateProfile,
+    SchemaSendUpdateProfile,
+} from "./handlers/update_profile";
 
 const app = new Elysia()
     .use(staticPlugin())
@@ -116,12 +123,40 @@ const app = new Elysia()
                 }
                 console.log(ws.remoteAddress, "connected", ws.data.userId);
             },
-            body: t.Object({
-                jsonrpc: t.Const("2.0"),
-                id: t.Optional(t.Number()),
-                method: t.String(),
-                params: t.Optional(t.Any()),
-            }),
+            body: t.Intersect(
+                [
+                    t.Object({
+                        jsonrpc: t.Const("2.0"),
+                        id: t.Optional(t.Number()),
+                    }),
+                    t.Union([
+                        t.Object({
+                            method: t.Literal("ping"),
+                            params: t.Optional(t.Any()),
+                        }),
+                        t.Object({
+                            method: t.Literal("getUser"),
+                        }),
+                        t.Object({
+                            method: t.Literal("sendTaps"),
+                            params: SchemaSendTaps,
+                        }),
+                        t.Object({
+                            method: t.Literal("updateProfile"),
+                            params: SchemaSendUpdateProfile,
+                        }),
+                        t.Object({
+                            method: t.Literal("getTopUsers"),
+                            params: SchemaGetTopUsers,
+                        }),
+                        t.Object({
+                            method: t.Literal("getTopReferrals"),
+                            params: SchemaGetTopReferrals,
+                        }),
+                    ]),
+                ],
+                { additionalProperties: false }
+            ),
             async message(ws: WS, message) {
                 console.log(
                     "message",
@@ -140,17 +175,23 @@ const app = new Elysia()
                 try {
                     switch (message.method) {
                         case "sendTaps":
-                            let response = await handleSendTaps(ws, {
-                                userId: ws.data.userId,
-                                taps: message.params,
-                            });
+                            let response = await handleSendTaps(
+                                ws,
+                                message.params
+                            );
                             result = response[0];
                             break;
                         case "ping":
-                            result = message.params;
+                            result = "pong";
                             break;
                         case "getUser":
                             result = await handleGetUser(ws, {});
+                            break;
+                        case "updateProfile":
+                            result = await handleSendUpdateProfile(
+                                ws,
+                                message.params
+                            );
                             break;
                         case "getTopUsers":
                             result = await handleGetTopUsers(
@@ -166,6 +207,7 @@ const app = new Elysia()
                             break;
                         default:
                             throw new JsonRpcBaseError(
+                                // @ts-ignore
                                 `Method ${message.method} not found`,
                                 -32601
                             );
@@ -174,10 +216,15 @@ const app = new Elysia()
                     if (e instanceof JsonRpcError) {
                         error = e;
                     } else {
-                        error = new JsonRpcBaseError(
-                            (e as Error).toString(),
-                            -32603
-                        );
+                        let errorMessage = (e as Error).toString();
+                        if (errorMessage.startsWith("TarantoolError:")) {
+                            errorMessage = errorMessage
+                                .split(":")
+                                .slice(3)
+                                .join(":")
+                                .slice(1);
+                        }
+                        error = new JsonRpcBaseError(errorMessage, -32603);
                     }
                 }
                 response = {

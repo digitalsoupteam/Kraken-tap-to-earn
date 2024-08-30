@@ -1,9 +1,8 @@
-import type { ServerWebSocket } from "bun";
-import type { WebSocketData, TntUserInfo, JsonRpcError, WS } from "../types";
+import type { TntUserInfo, JsonRpcError, WS } from "../types";
 import getTarantool from "../tnt";
 
 export type GetUserResponse = TntUserInfo;
-export type GetUserError = JsonRpcError<1000, "GetUserError">;
+export type GetUserError = JsonRpcError<1004, "GetUserError">;
 export type GetUserRequest = {};
 
 export async function handleGetUser(

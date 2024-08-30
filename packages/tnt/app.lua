@@ -42,6 +42,7 @@ box.once('schema', function()
         { name = 'taps',             type = 'number' },
         { name = 'nickname',         type = 'string' },
         { name = "ref_user_id",      type = "integer" },
+        { name = "wallet",           type = "string" },
     })
     users:create_index('user_id', { sequence = 'user_id_seq' })
     users:create_index('external_user_id', { parts = { { 'external_user_id' } }, unique = true })
@@ -74,6 +75,7 @@ box.once('schema', function()
     levels:create_index('pk', { parts = { { 'level' } }, unique = true })
 end)
 
+
 local settings = {
     referrer_bps = 2500,
     max_bps = 10000,
@@ -81,7 +83,7 @@ local settings = {
 
 
 --- @alias levels {id: number, quota_period: number, quota_amount: number, calm_period: number}
---- @alias user {user_id: number, external_user_id: string, is_blocked: boolean, level: number, session_until: number, session_taps: number, taps: number, nickname: string}
+--- @alias user {user_id: number, external_user_id: string, is_blocked: boolean, level: number, session_until: number, session_taps: number, taps: number, nickname: string, wallet: string}
 --- @alias userInfo {id: number, user_id: string, is_blocked: boolean, level: levels, nickname: string, session_start: number, session_left: number, session_until: number, session_taps: number, session_taps_left: number, taps: number, calm_until: number, ref_user: userInfo | nil}
 
 
@@ -155,6 +157,15 @@ function get_user(user_id)
     return user:tomap({ names_only = true })
 end
 
+local allowed_update_keys = {
+    'is_blocked',
+    'level',
+    'quota_period',
+    'quota_amount',
+    'nickname',
+    'wallet',
+}
+
 --- Update user
 --- @param user_id string
 --- @param params {is_blocked: boolean, level: number, quota_period: number, quota_amount: number, nickname: string}
@@ -166,11 +177,16 @@ function update_user(user_id, params)
     end
     local update = {}
     for key, value in pairs(params) do
-        if key == 'user_id' then
-            error('cannot update user_id')
+        if key == "wallet" and user.wallet ~= nil then
+            error('cannot update wallet')
         end
-        if key ~= 'is_blocked' and key ~= 'level' and key ~= 'quota_period' and key ~= 'quota_amount' and key ~= 'nickname' then
-            error('invalid key')
+        for i = 1, #allowed_update_keys do
+            if allowed_update_keys[i] == key then
+                break
+            end
+            if i == #allowed_update_keys then
+                error('invalid key')
+            end
         end
         table.insert(update, { '=', key, value })
     end
@@ -182,6 +198,7 @@ function update_user(user_id, params)
 end
 
 --- Create new user
+--- @param ref_user_id number | nil
 --- @return number
 function create_new_user(ref_user_id)
     local levels = get_or_create_levels(1)
@@ -277,11 +294,6 @@ function to_user_info(user, skip_ref_user)
         session_start = user.session_until - level.quota_period
     else
         if user.session_taps > 0 then
-            log.warn('user %s session taps not expired %s', user.user_id, json.encode(user))
-            -- print user using pairs
-            for i, v in pairs(user) do
-                log.warn('\tuser %s = %s', i, v)
-            end
             user.session_taps = 0
             user.session_until = 0
             box.space.users:update({ user.user_id }, { { '=', 'session_taps', 0 }, { '=', 'session_until', 0 } })
@@ -315,8 +327,8 @@ function to_user_info(user, skip_ref_user)
 end
 
 ---Get user info
----@param user_id string
----@param skip_ref_user boolean
+---@param user_id string | number
+---@param skip_ref_user boolean | nil
 ---@return userInfo | nil
 function get_user_info(user_id, skip_ref_user)
     local user = get_user(user_id)
@@ -341,7 +353,7 @@ function get_top_referrals(by_user_id, limit)
     local users = box.space.users.index.ref_user_id:select({ user.user_id }, { limit = limit, iterator = 'REQ' })
     local results = {}
     for i = 1, #users do
-        results[i] = to_user_info(users[i]:tomap(), true)
+        results[i] = to_user_info(users[i]:tomap({ names_only = true }), true)
     end
     return results
 end
@@ -356,7 +368,7 @@ function get_top_users(limit)
     local users = box.space.users.index.taps:select({}, { limit = limit, iterator = 'REQ' })
     local results = {}
     for i = 1, #users do
-        results[i] = to_user_info(users[i]:tomap())
+        results[i] = to_user_info(users[i]:tomap({ names_only = true }), true)
     end
     return results
 end
