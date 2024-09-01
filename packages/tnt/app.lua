@@ -120,7 +120,7 @@ function get_or_create_levels(level_id)
     if res ~= nil then
         return res
     else
-        return update_levels(1, { quota_period = 120, calm_period = 3600, quota_amount = 1000 })
+        return update_levels(1, { quota_period = 120, calm_period = 3600, quota_amount = 6000 })
     end
 end
 
