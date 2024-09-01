@@ -35,7 +35,7 @@ const app = new Elysia()
     .use(
         env({
             TOKEN: t.String({
-                pattern: "^[0-9]+:[0-9a-zA-Z_]+$",
+                pattern: "^[0-9]+:[0-9a-zA-Z_-]+$",
                 error: "TOKEN is required for a service!",
             }),
         })
