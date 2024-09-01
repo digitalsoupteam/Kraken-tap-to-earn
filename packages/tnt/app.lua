@@ -43,6 +43,7 @@ box.once('schema', function()
         { name = 'nickname',         type = 'string' },
         { name = "ref_user_id",      type = "integer" },
         { name = "wallet",           type = "string" },
+        { name = "points",           type = "number" },
     })
     users:create_index('user_id', { sequence = 'user_id_seq' })
     users:create_index('external_user_id', { parts = { { 'external_user_id' } }, unique = true })
@@ -212,7 +213,9 @@ function create_new_user(username, ref_user_id)
         0,
         0,
         username,
-        ref_user_id
+        ref_user_id,
+        '',
+        0
     })
     return new_user[1]
 end
@@ -320,6 +323,8 @@ function to_user_info(user, skip_ref_user)
         session_taps_left = taps_left,
         taps = user.taps,
         ref_user = nil,
+        wallet = user.wallet,
+        points = user.points,
     }
     if skip_ref_user ~= true and user.ref_user_id ~= nil then
         local ref_user = get_user_info(user.ref_user_id, true)
@@ -419,9 +424,12 @@ function register_taps(batch)
                             { { '+', 4, inserted_taps } })
                     end
 
+                    local inserted_points = inserted_taps * 1.1
+
                     local user_updates = {
                         { '+', 'session_taps', inserted_taps },
                         { '+', 'taps',         inserted_taps },
+                        { '+', 'points',         inserted_points },
                     }
                     if user_info.session_taps == 0 then
                         table.insert(user_updates, { '=', 'session_until', now + user_info.level.quota_period })
@@ -432,12 +440,13 @@ function register_taps(batch)
                     if user_info.ref_user ~= nil then
                         box.space.users:update(
                             { user_info.ref_user.id },
-                            { { '+', 'taps', inserted_taps * settings.referrer_bps / 10000 } }
+                            { { '+', 'points', inserted_points * settings.referrer_bps / 10000 } }
                         )
                     end
                 end
                 results[i].user_info['session_taps'] = user_info['session_taps'] + inserted_taps
                 results[i].user_info['taps'] = user_info['taps'] + inserted_taps
+                results[i].user_info['points'] = user_info['points'] + inserted_points
                 results[i].user_info['session_taps_left'] = user_info['session_taps_left'] - inserted_taps
             end
         end
