@@ -95,6 +95,7 @@ const app = new Elysia()
             let tnt = await getTarantool();
             const user = await tnt.createUserFromTg(
                 initData.user!.id.toString(),
+                initData.user!.username,
                 ctx.body.referrer_id
             );
             if (!user.userId) {

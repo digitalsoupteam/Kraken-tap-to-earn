@@ -198,9 +198,10 @@ function update_user(user_id, params)
 end
 
 --- Create new user
+--- @param create_new_user string
 --- @param ref_user_id number | nil
 --- @return number
-function create_new_user(ref_user_id)
+function create_new_user(username, ref_user_id)
     local levels = get_or_create_levels(1)
     local new_user = box.space.users:insert({
         box.NULL,
@@ -210,7 +211,7 @@ function create_new_user(ref_user_id)
         0,
         0,
         0,
-        '',
+        username,
         ref_user_id
     })
     return new_user[1]
@@ -231,7 +232,7 @@ function create_anonymous_user(ref_user_external_id)
         ref_user_id = ref_user.user_id
     end
 
-    local user_id = create_new_user(ref_user_id)
+    local user_id = create_new_user("unknown kraken", ref_user_id)
     local user = get_user_info(user_id)
     if user == nil then
         error('user not found')
@@ -241,9 +242,10 @@ end
 
 --- Get or create user from telegram id
 --- @param id string
+--- @param username string
 --- @param ref_user_external_id string | nil
 --- @return userInfo
-function get_or_create_user_from_tg(id, ref_user_external_id)
+function get_or_create_user_from_tg(id, username, ref_user_external_id)
     local ref_user_id = 0
     if ref_user_external_id ~= nil then
         local ref_user = get_user(ref_user_external_id)
@@ -255,7 +257,7 @@ function get_or_create_user_from_tg(id, ref_user_external_id)
     local res = box.space.tg2user.index.pk:get(id)
     local user_id
     if res == nil then
-        user_id = create_new_user(ref_user_id)
+        user_id = create_new_user(username, ref_user_id)
         box.space.tg2user:insert({ id, user_id })
     else
         user_id = res.user_id

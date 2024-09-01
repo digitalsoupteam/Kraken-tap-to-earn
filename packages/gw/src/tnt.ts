@@ -103,12 +103,14 @@ class Client {
 
     async createUserFromTg(
         tg_id: number,
-        referrer_id?: string
+        username: string,
+        referrer_id?: string,
     ): Promise<TntUserInfo> {
         console.log("createUserFromTg", tg_id);
         let result = await this.tarantool.call(
             "get_or_create_user_from_tg",
             tg_id,
+            username,
             referrer_id
         );
         if (result && result.length > 0) {
