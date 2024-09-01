@@ -64,12 +64,12 @@ const app = new Elysia()
             userId: data.id,
         };
     })
-    .get("/", () => Bun.file("./public/index.html"))
-    .get("/ui/*", (ctx) => {
-        const path = new URL(ctx.request.url).pathname;
-        const file = Bun.file(`./public${path}`);
-        return new Response(file);
-    })
+    // .get("/", () => Bun.file("./public/index.html"))
+    // .get("/ui/*", (ctx) => {
+    //     const path = new URL(ctx.request.url).pathname;
+    //     const file = Bun.file(`./public${path}`);
+    //     return new Response(file);
+    // })
     .post(
         "/api/anonymous_session",
         async (ctx) => {
@@ -244,18 +244,18 @@ const app = new Elysia()
         })
     )
     .onStart(async () => {
-        let build = async () => {
-            await Bun.build({
-                entrypoints: ["./src/index.html"],
-                outdir: "./public",
-                // minify: true,
-                target: "browser",
-                format: "esm",
-                plugins: [html()],
-            });
-        };
-        await build();
-        const watcher = watch(import.meta.dir, build);
+        // let build = async () => {
+        //     await Bun.build({
+        //         entrypoints: ["./src/index.html"],
+        //         outdir: "./public",
+        //         // minify: true,
+        //         target: "browser",
+        //         format: "esm",
+        //         plugins: [html()],
+        //     });
+        // };
+        // await build();
+        // const watcher = watch(import.meta.dir, build);
     });
 
 app.listen(3000);
