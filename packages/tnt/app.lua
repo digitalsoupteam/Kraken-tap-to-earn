@@ -52,6 +52,7 @@ box.once('schema', function()
     users:create_index('external_user_id', { parts = { { 'external_user_id' } }, unique = true })
     users:create_index('ref_user_id', { parts = { { 'ref_user_id' }, { 'taps' } }, unique = false })
     users:create_index('taps', { parts = { { 'taps' } }, unique = false })
+    users:create_index('points', { parts = { { 'points' } }, unique = false })
 
     local tg2user = box.schema.create_space('tg2user', { engine = 'vinyl' })
     tg2user:format({
