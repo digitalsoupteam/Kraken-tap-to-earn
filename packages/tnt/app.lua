@@ -81,8 +81,12 @@ end)
 
 
 local settings = {
-    referrer_bps = 2500,
-    max_bps = 10000,
+    referral_levels = {
+        0.25,
+        0.0625, 
+    },
+    days_in_row_limit = 10,
+    days_in_row_multiplier = 0.1
 }
 
 
@@ -203,7 +207,7 @@ end
 
 --- Create new user
 --- @param create_new_user string
---- @param ref_user_id number | nil
+--- @param ref_user_id number
 --- @return number
 function create_new_user(username, ref_user_id)
     local levels = get_or_create_levels(1)
@@ -350,6 +354,7 @@ function to_user_info(user, skip_ref_user)
         session_taps_left = taps_left,
         taps = user.taps,
         ref_user = nil,
+        ref_user_id = user.ref_user_id,
         wallet = user.wallet,
         points = user.points,
         days = days,
@@ -455,10 +460,12 @@ function register_taps(batch)
                             { { '+', 4, inserted_taps } })
                     end
 
-                    local limitedDays = user_info.days_in_row 
-                    if limitedDays > 10 then limitedDays = 10 end -- 10 days limit
-                    local daysMultiplier = limitedDays * 0.1 -- 10%
-                    local inserted_points = inserted_taps + inserted_taps * daysMultiplier
+                    local limited_days = user_info.days_in_row 
+                    if limited_days > settings.days_in_row_limit then 
+                        limited_days = settings.days_in_row_limit 
+                    end
+                    local days_multiplier = limited_days * settings.days_in_row_multiplier
+                    local inserted_points = inserted_taps + inserted_taps * days_multiplier
 
                     local user_updates = {
                         { '+', 'session_taps', inserted_taps },
@@ -471,11 +478,25 @@ function register_taps(batch)
                     end
 
                     box.space.users:update({ user_info.id }, user_updates)
-                    if user_info.ref_user ~= nil then
+                    
+                    -- Referrals
+                    -- 1 level
+                    local ref1_id = user_info.ref_user_id
+                    if ref1_id ~= 0 then
+                        local ref1_points = inserted_points * settings.referral_levels[1]
                         box.space.users:update(
-                            { user_info.ref_user.id },
-                            { { '+', 'points', inserted_points * settings.referrer_bps / 10000 } }
+                            { ref1_id },
+                            { { '+', 'points', ref1_points } }
                         )
+                        -- 2 level
+                        local ref2_id = user_info.ref_user.ref_user_id
+                        local ref2_points = inserted_points * settings.referral_levels[2]
+                        if ref2_id ~= 0 then
+                            box.space.users:update(
+                                { ref2_id },
+                                { { '+', 'points', ref2_points } }
+                            )
+                        end
                     end
                 end
                 results[i].user_info['session_taps'] = user_info['session_taps'] + inserted_taps

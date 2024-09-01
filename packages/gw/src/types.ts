@@ -132,5 +132,6 @@ export type TntUserInfo = {
     taps: number;
     calmUntil: number;
     refUser: TntUserInfo | null;
+    refUserId: number;
     points: number;
 };
