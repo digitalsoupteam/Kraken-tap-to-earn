@@ -44,6 +44,9 @@ box.once('schema', function()
         { name = "ref_user_id",      type = "integer" },
         { name = "wallet",           type = "string" },
         { name = "points",           type = "number" },
+        { name = "days",             type = "number" },
+        { name = "days_in_row",      type = "number" },
+        { name = "last_day_timestamp", type = "number" },
     })
     users:create_index('user_id', { sequence = 'user_id_seq' })
     users:create_index('external_user_id', { parts = { { 'external_user_id' } }, unique = true })
@@ -204,6 +207,7 @@ end
 --- @return number
 function create_new_user(username, ref_user_id)
     local levels = get_or_create_levels(1)
+    local now = os.time()
     local new_user = box.space.users:insert({
         box.NULL,
         uuid.new(),
@@ -215,7 +219,10 @@ function create_new_user(username, ref_user_id)
         username,
         ref_user_id,
         '',
-        0
+        0,
+        1,
+        1,
+        now
     })
     return new_user[1]
 end
@@ -307,6 +314,26 @@ function to_user_info(user, skip_ref_user)
         taps_left = level.quota_amount
     end
 
+    local days = user.days
+    local days_in_row = user.days_in_row
+    local last_day_timestamp = user.last_day_timestamp
+
+    local seconds_in_day = 24 * 60 * 60
+
+    if now > last_day_timestamp + seconds_in_day then: -- wait one day
+        days += 1 -- total counter
+
+        if now > last_day_timestamp + seconds_in_day * 2 then: 
+            days_in_row = 1 -- if more 2 days, reset to default
+        else:                                                      
+            days_in_row += 1 -- if less 2 days, endless increment 
+        end
+
+        last_day_timestamp = now -- save checkpoint
+
+        box.space.users:update({ user.user_id }, { { '=', 'days', days }, { '=', 'days_in_row', days_in_row }, { '=', 'last_day_timestamp', last_day_timestamp } })
+    end
+
 
     local result = {
         id = user.user_id,
@@ -325,6 +352,9 @@ function to_user_info(user, skip_ref_user)
         ref_user = nil,
         wallet = user.wallet,
         points = user.points,
+        days = days,
+        days_in_row = days_in_row,
+        last_day_timestamp = last_day_timestamp,
     }
     if skip_ref_user ~= true and user.ref_user_id ~= nil then
         local ref_user = get_user_info(user.ref_user_id, true)
@@ -424,12 +454,14 @@ function register_taps(batch)
                             { { '+', 4, inserted_taps } })
                     end
 
-                    local inserted_points = inserted_taps * 1.1
+                    local limitedDays = user.days_in_row > 10 ? 10 : user.days_in_row -- 10 days limit
+                    local daysMultiplier = limitedDays * 0.1 -- 10%
+                    local inserted_points = inserted_taps + inserted_taps * daysMultiplier
 
                     local user_updates = {
                         { '+', 'session_taps', inserted_taps },
                         { '+', 'taps',         inserted_taps },
-                        { '+', 'points',         inserted_points },
+                        { '+', 'points',       inserted_points },
                     }
                     if user_info.session_taps == 0 then
                         table.insert(user_updates, { '=', 'session_until', now + user_info.level.quota_period })
