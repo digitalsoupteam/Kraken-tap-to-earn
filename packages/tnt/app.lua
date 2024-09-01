@@ -320,13 +320,13 @@ function to_user_info(user, skip_ref_user)
 
     local seconds_in_day = 24 * 60 * 60
 
-    if now > last_day_timestamp + seconds_in_day then: -- wait one day
-        days += 1 -- total counter
+    if now > last_day_timestamp + seconds_in_day then -- wait one day
+        days = days + 1 -- total counter
 
-        if now > last_day_timestamp + seconds_in_day * 2 then: 
+        if now > last_day_timestamp + seconds_in_day * 2 then 
             days_in_row = 1 -- if more 2 days, reset to default
-        else:                                                      
-            days_in_row += 1 -- if less 2 days, endless increment 
+        else                                                      
+            days_in_row = days_in_row + 1 -- if less 2 days, endless increment 
         end
 
         last_day_timestamp = now -- save checkpoint
@@ -426,6 +426,7 @@ function register_taps(batch)
             local effective_taps = #taps
             local user_info = get_user_info(user_id)
             local inserted_taps = 0
+            local inserted_points = 0
             if user_info == nil then
                 results[i].error = 'user not found'
             else
@@ -454,7 +455,8 @@ function register_taps(batch)
                             { { '+', 4, inserted_taps } })
                     end
 
-                    local limitedDays = user.days_in_row > 10 ? 10 : user.days_in_row -- 10 days limit
+                    local limitedDays = user_info.days_in_row 
+                    if limitedDays > 10 then limitedDays = 10 end -- 10 days limit
                     local daysMultiplier = limitedDays * 0.1 -- 10%
                     local inserted_points = inserted_taps + inserted_taps * daysMultiplier
 
