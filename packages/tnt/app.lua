@@ -416,7 +416,7 @@ function get_top_users(limit)
     if type(limit) ~= 'number' then
         limit = 100
     end
-    local users = box.space.users.index.taps:select({}, { limit = limit, iterator = 'REQ' })
+    local users = box.space.users.index.points:select({}, { limit = limit, iterator = 'REQ' })
     local results = {}
     for i = 1, #users do
         results[i] = to_user_info(users[i]:tomap({ names_only = true }), true)
