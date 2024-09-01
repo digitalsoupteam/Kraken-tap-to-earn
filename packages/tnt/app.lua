@@ -85,6 +85,7 @@ local settings = {
         0.25,
         0.0625, 
     },
+    referral_initial_points = 20000,
     days_in_row_limit = 10,
     days_in_row_multiplier = 0.1
 }
@@ -212,6 +213,14 @@ end
 function create_new_user(username, ref_user_id)
     local levels = get_or_create_levels(1)
     local now = os.time()
+    local initial_points = 0
+    if ref_user_id ~= 0 then
+        initial_points = settings.referral_initial_points
+        box.space.users:update(
+            { ref_user_id },
+            { { '+', 'points', initial_points } }
+        )
+    end
     local new_user = box.space.users:insert({
         box.NULL,
         uuid.new(),
@@ -223,7 +232,7 @@ function create_new_user(username, ref_user_id)
         username,
         ref_user_id,
         '',
-        0,
+        initial_points,
         1,
         1,
         now
