@@ -328,27 +328,6 @@ function to_user_info(user, skip_ref_user)
         taps_left = level.quota_amount
     end
 
-    local days = user.days
-    local days_in_row = user.days_in_row
-    local last_day_timestamp = user.last_day_timestamp
-
-    local seconds_in_day = 24 * 60 * 60
-
-    if now > last_day_timestamp + seconds_in_day then -- wait one day
-        days = days + 1 -- total counter
-
-        if now > last_day_timestamp + seconds_in_day * 2 then 
-            days_in_row = 1 -- if more 2 days, reset to default
-        else                                                      
-            days_in_row = days_in_row + 1 -- if less 2 days, endless increment 
-        end
-
-        last_day_timestamp = now -- save checkpoint
-
-        box.space.users:update({ user.user_id }, { { '=', 'days', days }, { '=', 'days_in_row', days_in_row }, { '=', 'last_day_timestamp', last_day_timestamp } })
-    end
-
-
     local result = {
         id = user.user_id,
         user_id = tostring(user.external_user_id),
@@ -367,9 +346,9 @@ function to_user_info(user, skip_ref_user)
         ref_user_id = user.ref_user_id,
         wallet = user.wallet,
         points = user.points,
-        days = days,
-        days_in_row = days_in_row,
-        last_day_timestamp = last_day_timestamp,
+        days = user.days,
+        days_in_row = user.days_in_row,
+        last_day_timestamp = user.last_day_timestamp,
     }
     if skip_ref_user ~= true and user.ref_user_id ~= nil then
         local ref_user = get_user_info(user.ref_user_id, true)
@@ -477,11 +456,35 @@ function register_taps(batch)
                     local days_multiplier = limited_days * settings.days_in_row_multiplier
                     local inserted_points = inserted_taps + inserted_taps * days_multiplier
 
+                     
                     local user_updates = {
                         { '+', 'session_taps', inserted_taps },
                         { '+', 'taps',         inserted_taps },
                         { '+', 'points',       inserted_points },
                     }
+
+                    local days = user_info.days
+                    local days_in_row = user_info.days_in_row
+                    local last_day_timestamp = user_info.last_day_timestamp
+                
+                    local seconds_in_day = 24 * 60 * 60
+                
+                    if now > last_day_timestamp + seconds_in_day then -- wait one day
+                        days = days + 1 -- total counter
+                
+                        if now > last_day_timestamp + seconds_in_day * 2 then 
+                            days_in_row = 1 -- if more 2 days, reset to default
+                        else                                                      
+                            days_in_row = days_in_row + 1 -- if less 2 days, endless increment 
+                        end
+                
+                        last_day_timestamp = now -- save checkpoint
+                        
+                        table.insert(user_updates, { '=', 'days', days })
+                        table.insert(user_updates, { '=', 'days_in_row', days_in_row })
+                        table.insert(user_updates, { '=', 'last_day_timestamp', last_day_timestamp })
+                    end
+               
                     if user_info.session_taps == 0 then
                         table.insert(user_updates, { '=', 'session_until', now + user_info.level.quota_period })
                         results[i].user_info['session_until'] = now + user_info.level.quota_period
