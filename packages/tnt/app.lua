@@ -187,7 +187,7 @@ function update_user(user_id, params)
     end
     local update = {}
     for key, value in pairs(params) do
-        if key == "wallet" and user.wallet ~= nil then
+        if key == "wallet" and user.wallet ~= '' then
             error('cannot update wallet')
         end
         for i = 1, #allowed_update_keys do
