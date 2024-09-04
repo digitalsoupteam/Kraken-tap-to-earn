@@ -14,7 +14,7 @@ import {
 } from "./types";
 import { Elysia, t } from "elysia";
 import { env } from "@yolk-oss/elysia-env";
-import getTarantool from "./tnt";
+import getTarantool, { TntSubscribe, toCamelCase } from "./tnt";
 import staticPlugin from "@elysiajs/static";
 import {
     createWebAppSecret,
@@ -29,8 +29,20 @@ import {
     handleSendUpdateProfile,
     SchemaSendUpdateProfile,
 } from "./handlers/update_profile";
+import {
+    handleGetUsersAroundOf,
+    SchemaGetUsersAroundOf,
+} from "./handlers/get_around_of";
 
 const app = new Elysia()
+    // @ts-ignore
+    .onStart((ctx) => {
+        if (!ctx.server) {
+            return;
+        }
+        console.log("Listening on " + ctx.server.url);
+        new TntSubscribe(ctx.server).connect();
+    })
     .use(staticPlugin())
     .use(
         env({
@@ -113,7 +125,6 @@ const app = new Elysia()
     .guard((app) =>
         app.ws("/ws", {
             beforeHandle(ws) {
-                console.log("beforeHandle", ws);
                 if (!ws.userId) {
                     throw new Error("Unauthorized");
                 }
@@ -151,8 +162,18 @@ const app = new Elysia()
                             params: SchemaGetTopUsers,
                         }),
                         t.Object({
+                            method: t.Literal("getUsersAround"),
+                            params: SchemaGetUsersAroundOf,
+                        }),
+                        t.Object({
                             method: t.Literal("getTopReferrals"),
                             params: SchemaGetTopReferrals,
+                        }),
+                        t.Object({
+                            method: t.Literal("subscribe"),
+                        }),
+                        t.Object({
+                            method: t.Literal("unsubscribe"),
                         }),
                     ]),
                 ],
@@ -205,6 +226,20 @@ const app = new Elysia()
                                 ws,
                                 message.params
                             );
+                            break;
+                        case "getUsersAround":
+                            result = await handleGetUsersAroundOf(
+                                ws,
+                                message.params
+                            );
+                            break;
+                        case "subscribe":
+                            ws.subscribe(`user:${ws.data.userId}`);
+                            result = "ok";
+                            break;
+                        case "unsubscribe":
+                            ws.unsubscribe(`user:${ws.data.userId}`);
+                            result = "ok";
                             break;
                         default:
                             throw new JsonRpcBaseError(

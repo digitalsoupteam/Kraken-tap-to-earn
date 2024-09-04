@@ -1,19 +1,61 @@
 import Tarantool from "tarantool-driver";
 import _ from "lodash";
 
-import type { TntRegisterTaps, TntUserInfo } from "./types";
+import type { TntRegisterTaps, TntUserInfo, WS } from "./types";
+import { Server } from "bun";
 
-const toSnakeCase = (obj: any) => {
+export const toSnakeCase = (obj: any) => {
     return _.mapKeys(obj, (value, key) => {
         return _.snakeCase(key);
     });
 };
 
-const toCamelCase = (obj: any) => {
+export const toCamelCase = (obj: any) => {
     return _.mapKeys(obj, (value, key) => {
         return _.camelCase(key);
     });
 };
+
+export class TntSubscribe {
+    client: WebSocket | null = null;
+    constructor(public ws: Server) {}
+
+    onMessage(event: any) {
+        console.log("TntSubscribe.onMessage", event.data);
+        try {
+            let data = JSON.parse(event.data);
+            this.ws.publish(
+                `user:${data.user_id}`,
+                JSON.stringify({
+                    jsonrpc: "2.0",
+                    method: "updates",
+                    params: toCamelCase(data),
+                })
+            );
+        } catch (error) {
+            console.error(error);
+        }
+    }
+
+    async onClose() {
+        console.log("TntSubscribe.onClose");
+        if (!this.client) {
+            return;
+        }
+        this.client.close();
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        this.connect();
+    }
+
+    async connect() {
+        console.log("TntSubscribe.connect");
+        this.client = new WebSocket(
+            process.env.TNT_WS || "ws://localhost:3300"
+        );
+        this.client.addEventListener("message", this.onMessage.bind(this));
+        this.client.addEventListener("close", this.onClose.bind(this));
+    }
+}
 
 class Client {
     private tarantool: Tarantool;
@@ -65,6 +107,26 @@ class Client {
         return [];
     }
 
+    async getUsersAround(
+        userId: string,
+        limit: number
+    ): Promise<{ above: TntUserInfo[]; below: TntUserInfo[] }> {
+        console.log("getUsersAround", userId);
+        let result = await this.tarantool.call(
+            "get_users_around_of",
+            userId,
+            limit
+        );
+        if (result && result.length > 0 && result[0].length > 0) {
+            let { above, below } = result[0][0];
+            return {
+                above: above.map(toCamelCase),
+                below: below.map(toCamelCase),
+            };
+        }
+        return { above: [], below: [] };
+    }
+
     async getTopUsers(limit: number): Promise<TntUserInfo[]> {
         console.log("getTopUsers", limit);
         let result = await this.tarantool.call("get_top_users", limit);
@@ -76,7 +138,7 @@ class Client {
 
     async getUserInfo(userId: string): Promise<TntUserInfo> {
         console.log("getUserInfo", userId);
-        let result = await this.tarantool.call("get_user_info", userId);
+        let result = await this.tarantool.call("get_user_details", userId);
         if (result && result.length > 0) {
             return toCamelCase(result[0]) as any;
         }
@@ -104,7 +166,7 @@ class Client {
     async createUserFromTg(
         tg_id: number,
         username: string,
-        referrer_id?: string,
+        referrer_id?: string
     ): Promise<TntUserInfo> {
         console.log("createUserFromTg", tg_id);
         let result = await this.tarantool.call(
