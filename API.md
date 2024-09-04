@@ -65,7 +65,15 @@ QUERY {
     sessionTapsLeft: number;
     taps: number;
     calmUntil: number;
+    calmLeft: number;
     refUser: User | null;
+    refUserId: number;
+    wallet: string | null;
+    points: number;
+    days: number;
+    daysInRow: number;
+    daysUpdatedAt: number;
+    position: number | null
 }
 ```
 
@@ -170,6 +178,27 @@ RESPONSE {
 }
 ```
 
+### getUsersAround
+```ts
+REQUEST {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "getUsersAround",
+    "params": {
+        limit: number,
+    }
+}
+RESPONSE {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "result": {
+        above: User[],
+        below: User[]
+    },
+    "error": undefined | Error,
+}
+```
+
 
 ### getTopReferrals
 ```ts
@@ -189,6 +218,42 @@ RESPONSE {
         User, 
         ...
     ],
+    "error": undefined | Error,
+}
+```
+
+### subscribe
+```ts
+REQUEST {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "subscribe"
+}
+RESPONSE {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "result": "ok",
+    "error": undefined | Error,
+}
+UPDATES RESPONSE {
+    "jsonrpc": "2.0",
+    "method": "updates",
+    "params": User,
+    "error": undefined | Error,
+}
+```
+
+### unsubscribe
+```ts
+REQUEST {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "unsubscribe"
+}
+RESPONSE {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "result": "ok",
     "error": undefined | Error,
 }
 ```
