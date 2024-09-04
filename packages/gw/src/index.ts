@@ -1,5 +1,5 @@
-import { watch } from "fs";
-import html from "bun-plugin-html";
+// import { watch } from "fs";
+// import html from "bun-plugin-html";
 import { handleGetTopUsers, SchemaGetTopUsers } from "./handlers/get_top_users";
 import { handleGetUser } from "./handlers/get_user";
 import { handleSendTaps, SchemaSendTaps } from "./handlers/send_taps";
@@ -15,7 +15,7 @@ import {
 import { Elysia, t } from "elysia";
 import { env } from "@yolk-oss/elysia-env";
 import getTarantool, { TntSubscribe, toCamelCase } from "./tnt";
-import staticPlugin from "@elysiajs/static";
+// import staticPlugin from "@elysiajs/static";
 import {
     createWebAppSecret,
     decodeInitData,
@@ -43,7 +43,7 @@ const app = new Elysia()
         console.log("Listening on " + ctx.server.url);
         new TntSubscribe(ctx.server).connect();
     })
-    .use(staticPlugin())
+    // .use(staticPlugin())
     .use(
         env({
             TOKEN: t.String({
