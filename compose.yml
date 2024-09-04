@@ -2,7 +2,9 @@ version: "2"
 
 services:
     tarantool:
-        image: tarantool/tarantool:2.10
+        image: tarantool-kraken:2.10
+        build:
+            context: ./packages/tnt
 
         environment:
             TARANTOOL_USER_NAME: tnt
@@ -16,6 +18,7 @@ services:
         command: ["tarantool", "app.lua"]
 
         ports:
+            - "3300:3000"
             - "3301:3301"
 
 volumes:
