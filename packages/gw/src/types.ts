@@ -131,7 +131,13 @@ export type TntUserInfo = {
     sessionTapsLeft: number;
     taps: number;
     calmUntil: number;
+    calmLeft: number;
     refUser: TntUserInfo | null;
     refUserId: number;
+    wallet: string | null;
     points: number;
+    days: number;
+    daysInRow: number;
+    daysUpdatedAt: number;
+    position: number | null
 };

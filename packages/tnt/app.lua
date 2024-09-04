@@ -420,6 +420,7 @@ function to_user_info(user, opts)
         days = user.days,
         days_in_row = user.days_in_row,
         days_updated_at = user.days_updated_at,
+        position = nil
     }
     if opts ~= nil and opts['fetch_position'] ~= nil then
         result.position = get_position_of(user)
