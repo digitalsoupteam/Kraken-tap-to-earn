@@ -1,3 +1,4 @@
 {
-    "coc.preferences.formatOnSave": true
+    "coc.preferences.formatOnSave": true,
+    "Lua.diagnostics.globals": ["box"]
 }
