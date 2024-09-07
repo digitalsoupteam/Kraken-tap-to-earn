@@ -12,7 +12,7 @@ services:
             TARANTOOL_SLAB_ALLOC_ARENA: 0.1
 
         volumes:
-            - ./packages/tnt/app.lua:/opt/tarantool/app.lua
+            # - ./packages/tnt/app.lua:/opt/tarantool/app.lua
             - tarantool:/var/lib/tarantool
 
         command: ["tarantool", "app.lua"]
