@@ -95,10 +95,10 @@ end)
 
 local settings = {
     referral_levels = {
-        0.25,
-        0.0625,
+        0.1,
+        0.035,
     },
-    referral_initial_points = 20000,
+    referral_initial_points = 10000,
     days_in_row_limit = 10,
     days_in_row_multiplier = 1.1
 }
