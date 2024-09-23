@@ -103,11 +103,6 @@ local settings = {
     days_in_row_multiplier = 0.1
 }
 
-if settings.days_in_row_multiplier < 1 then
-    error('days_in_row_multiplier must be >= 1')
-end
-
-
 
 --- @alias levels {id: number, quota_period: number, quota_amount: number, calm_period: number}
 --- @alias user {user_id: number, external_user_id: string, is_blocked: boolean, level: number, session_until: number, session_taps: number, taps: number, nickname: string, wallet: string}
