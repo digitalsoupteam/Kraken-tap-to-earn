@@ -100,7 +100,7 @@ local settings = {
     },
     referral_initial_points = 10000,
     days_in_row_limit = 10,
-    days_in_row_multiplier = 1.1
+    days_in_row_multiplier = 0.1
 }
 
 if settings.days_in_row_multiplier < 1 then
@@ -594,7 +594,7 @@ function register_taps(batch)
                             limited_days = settings.days_in_row_limit
                         end
                         local days_multiplier = limited_days * settings.days_in_row_multiplier
-                        local inserted_points = inserted_taps * days_multiplier
+                        local inserted_points = inserted_taps + inserted_taps * days_multiplier
                         local days = user_info.days
                         local days_in_row = user_info.days_in_row
                         local days_updated_at = user_info.days_updated_at
