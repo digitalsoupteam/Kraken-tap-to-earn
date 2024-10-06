@@ -13,7 +13,7 @@ box.cfg {}
 box.once('schema', function()
     box.schema.sequence.create('user_id_seq')
     box.schema.sequence.create('tap_id_seq')
-    local taps = box.schema.create_space('taps', { engine = 'memtx' })
+    local taps = box.schema.create_space('taps', { engine = 'vinyl' })
     taps:format({
         { name = 'tap_id',    type = 'integer' },
         { name = 'user_id',   type = 'number' },
@@ -24,7 +24,7 @@ box.once('schema', function()
     taps:create_index('pk', { sequence = 'tap_id_seq' })
     taps:create_index('user_id', { parts = { { 'user_id' } }, unique = false })
 
-    local points_aggs = box.schema.create_space('points_aggs', { engine = 'vinyl' })
+    local points_aggs = box.schema.create_space('points_aggs', { engine = 'memtx' })
     points_aggs:format({
         { name = 'user_id',   type = 'number' },
         { name = 'period',    type = 'number' }, -- 86400
@@ -35,7 +35,7 @@ box.once('schema', function()
     points_aggs:create_index('periods', { parts = { { 'user_id' }, { 'period' } }, unique = false })
     points_aggs:create_index('user_id', { parts = { { 'user_id' } }, unique = false })
 
-    local users = box.schema.create_space('users', { engine = 'vinyl' })
+    local users = box.schema.create_space('users', { engine = 'memtx' })
     users:format({
         { name = 'user_id',          type = 'integer' },
         { name = 'external_user_id', type = 'uuid' },
@@ -66,7 +66,7 @@ box.once('schema', function()
     users:create_index('points', { parts = { { 'points' } }, unique = false })
     users:create_index('position', { parts = { { 'points' }, { 'user_id' } }, unique = false })
 
-    local tg2user = box.schema.create_space('tg2user', { engine = 'vinyl' })
+    local tg2user = box.schema.create_space('tg2user', { engine = 'memtx' })
     tg2user:format({
         { name = 'tg_id',   type = 'string' },
         { name = 'user_id', type = 'number' },
@@ -74,7 +74,7 @@ box.once('schema', function()
     tg2user:create_index('pk', { parts = { { 'tg_id' } }, unique = true })
     tg2user:create_index('user_id', { parts = { { 'user_id' } }, unique = true })
 
-    local sessions = box.schema.create_space('sessions', { engine = 'vinyl' })
+    local sessions = box.schema.create_space('sessions', { engine = 'memtx' })
     sessions:format({
         { name = 'session_id', type = 'uuid' },
         { name = 'user_id',    type = 'number' },
@@ -82,7 +82,7 @@ box.once('schema', function()
     })
     sessions:create_index('pk', { parts = { { 'session_id' }, { 'user_id' } }, unique = true })
 
-    local levels = box.schema.create_space('levels', { engine = 'vinyl' })
+    local levels = box.schema.create_space('levels', { engine = 'memtx' })
     levels:format({
         { name = 'level',        type = 'number' },
         { name = 'quota_period', type = 'number' },
