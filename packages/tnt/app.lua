@@ -112,7 +112,7 @@ local settings = {
 --- @param old_user user
 --- @param new_user user
 function on_user_update(old_user, new_user)
-    local user = to_user_info(new_user:tomap({ names_only = true }), { fetch_ref_user = true, fetch_position = true })
+    local user = to_user_info(new_user:tomap({ names_only = true }), { fetch_ref_user = true , fetch_position = false })
     broadcast(user)
 end
 
@@ -141,7 +141,7 @@ end
 function broadcast(msg)
     local payload = json.encode(msg)
     for i = 1, #ws_peers do
-        log.info('broadcast: %s', payload)
+        -- log.info('broadcast: %s', payload)
         ws_peers[i]:write(payload)
     end
 end
@@ -241,7 +241,7 @@ local allowed_update_keys = {
 --- @param params {is_blocked: boolean, level: number, quota_period: number, quota_amount: number, nickname: string}
 --- @return userInfo | nil
 function update_user(user_id, params)
-    log.info('update user: %s with %s', user_id, json.encode(params))
+    -- log.info('update user: %s with %s', user_id, json.encode(params))
     local user = get_user(user_id)
     if user == nil then
         error('user not found')
@@ -273,7 +273,7 @@ end
 --- @param ref_user_id number
 --- @return number
 function create_new_user(username, ref_user_id)
-    log.info('create new user: %s', username)
+    -- log.info('create new user: %s', username)
     local now = os.time()
     local initial_points = 0
     if ref_user_id ~= 0 then
@@ -307,9 +307,9 @@ end
 --- @return userInfo
 function create_anonymous_user(ref_user_external_id)
     local ref_user_id = 0
-    log.info('create anonymous user')
+    -- log.info('create anonymous user')
     if ref_user_external_id ~= nil then
-        log.info('ref_user_external_id: %s', ref_user_external_id)
+        -- log.info('ref_user_external_id: %s', ref_user_external_id)
         local ref_user = get_user(ref_user_external_id)
         if ref_user == nil then
             error('ref user not found')
@@ -342,13 +342,13 @@ function get_or_create_user_from_tg(id, username, ref_user_external_id)
     local res = box.space.tg2user.index.pk:get(id)
     local user_id
     if res == nil then
-        log.info('create new user from telegram id: %s (%s)', id, username)
+        -- log.info('create new user from telegram id: %s (%s)', id, username)
         box.atomic(function()
             user_id = create_new_user(username, ref_user_id)
             box.space.tg2user:insert({ id, user_id })
         end)
     else
-        log.info('get user from telegram id: %s (%s)', id, username)
+        -- log.info('get user from telegram id: %s (%s)', id, username)
         user_id = res.user_id
     end
     local user = get_user_info(user_id)
@@ -418,10 +418,10 @@ function to_user_info(user, opts)
         days_in_row = user.days_in_row,
         days_updated_at = user.days_updated_at,
     }
-    if opts ~= nil and opts['fetch_position'] ~= nil then
+    if opts ~= nil and opts['fetch_position'] == true then
         result.position = get_position_of(user)
     end
-    if opts ~= nil and opts['fetch_ref_user'] ~= nil and user.ref_user_id ~= nil then
+    if opts ~= nil and opts['fetch_ref_user'] == true and user.ref_user_id ~= nil then
         result.ref_user = get_user_info(user.ref_user_id, {})
     end
     return result
@@ -455,7 +455,7 @@ end
 ---@param limit number
 ---@return userInfo[]
 function get_top_referrals(by_user_id, limit)
-    log.info('get top referrals: %s', by_user_id)
+    -- log.info('get top referrals: %s', by_user_id)
     if type(limit) ~= 'number' then
         limit = 100
     end
@@ -475,7 +475,7 @@ end
 ---@param limit number
 ---@return userInfo[]
 function get_top_users(limit)
-    log.info('get top users')
+    -- log.info('get top users')
     if type(limit) ~= 'number' then
         limit = 100
     end
@@ -492,7 +492,7 @@ end
 ---@param limit number
 ---@return {above: userInfo[], below: userInfo[]}
 function get_users_around_of(user_id, limit)
-    log.info('get users around: %s', user_id)
+    -- log.info('get users around: %s', user_id)
     local user_info = get_user_info(user_id)
     if user_info == nil then
         error('user not found')
@@ -549,7 +549,7 @@ end
 ---@param batch {user_id: string, taps: {x: number, y: number}}[]
 ---@return {user_info: userInfo, error: nil}[]
 function register_taps(batch)
-    log.info('register taps (%d)', #batch)
+    -- log.info('register taps (%d)', #batch)
     local results = {}
     local now = os.time()
     for i = 1, #batch do
@@ -664,7 +664,7 @@ function register_taps(batch)
 end
 
 box.once('fixtures', function()
-    log.info("self-check users")
+    -- log.info("self-check users")
     local ref_user = create_anonymous_user()
     box.space.users:update({ ref_user.id },
         { { '=', 'external_user_id', uuid.fromstr('e92148b9-0c2c-4b15-869a-d248149d0f55') } })
@@ -676,7 +676,7 @@ box.once('fixtures', function()
     local user5 = get_or_create_user_from_tg('5', 'user5', user2.user_id)
     local user6 = get_or_create_user_from_tg('5', 'user5', ref_user.user_id)
 
-    log.info("self-check taps")
+    -- log.info("self-check taps")
     register_taps({
         {
             user_id = user2.user_id,
@@ -713,13 +713,13 @@ box.once('fixtures', function()
         },
     })
 
-    log.info("self-check top users")
+    -- log.info("self-check top users")
     get_top_users(100)
 
-    log.info("self-check top referrals")
+    -- log.info("self-check top referrals")
     get_top_referrals(ref_user.user_id, 100)
 
-    log.info("self-check users around")
+    -- log.info("self-check users around")
     get_users_around_of(ref_user.user_id, 100)
 end)
 -- vim:ts=4 ss=4 sw=4 expandtab
