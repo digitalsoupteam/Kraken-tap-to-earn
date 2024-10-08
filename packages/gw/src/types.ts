@@ -134,4 +134,10 @@ export type TntUserInfo = {
     refUser: TntUserInfo | null;
     refUserId: number;
     points: number;
+    days: number;
+    daysInRow: number;
+    daysUpdatedAt: number;
+    position: number | null;
+    wallet: string | null;
+    calmLeft: number;
 };
