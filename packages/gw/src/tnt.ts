@@ -4,16 +4,26 @@ import _ from "lodash";
 import type { TntRegisterTaps, TntUserInfo, WS } from "./types";
 import { Server } from "bun";
 
-export const toSnakeCase = (obj: any) => {
-    return _.mapKeys(obj, (value, key) => {
-        return _.snakeCase(key);
-    });
+export const toSnakeCase = (obj: any): any => {
+    if (_.isArray(obj)) {
+        return obj.map(toSnakeCase);
+    } else if (_.isObject(obj)) {
+        return _.mapKeys(_.mapValues(obj, toSnakeCase), (value, key) =>
+            _.snakeCase(key)
+        );
+    }
+    return obj;
 };
 
-export const toCamelCase = (obj: any) => {
-    return _.mapKeys(obj, (value, key) => {
-        return _.camelCase(key);
-    });
+export const toCamelCase = (obj: any): any => {
+    if (_.isArray(obj)) {
+        return obj.map(toCamelCase);
+    } else if (_.isObject(obj)) {
+        return _.mapKeys(_.mapValues(obj, toCamelCase), (value, key) =>
+            _.camelCase(key)
+        );
+    }
+    return obj;
 };
 
 export class TntSubscribe {
