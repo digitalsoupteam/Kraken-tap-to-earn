@@ -9,7 +9,10 @@ local AGGREGATION_PERIODS = { 86400, 604800, 2592000, 7776000 }
 local SECONDS_IN_DAY = 24 * 60 * 60
 
 log.cfg { format = 'json', level = 'verbose' }
-box.cfg {}
+box.cfg {
+    txn_isolation = 'read-committed',
+    readahead = 64 * 1024,
+}
 box.once('schema', function()
     box.schema.sequence.create('user_id_seq')
     box.schema.sequence.create('tap_id_seq')
@@ -388,7 +391,7 @@ function to_user_info(user, opts)
             user.session_taps = 0
             user.session_until = 0
             -- do not update ref_user
-            if type(opts) == 'table' and opts['fetch_ref_user'] ~= nil then
+            if type(opts) == 'table' and opts['fetch_ref_user'] == true then
                 box.space.users:update({ user.user_id }, { { '=', 'session_taps', 0 }, { '=', 'session_until', 0 } })
             end
         end
@@ -560,7 +563,7 @@ function register_taps(batch)
             local user_id = batch[i].user_id
             local taps = batch[i].taps
             local effective_taps = #taps
-            local user_info = get_user_info(user_id, { fetch_ref_user = true, fetch_position = true })
+            local user_info = get_user_info(user_id, { fetch_ref_user = false, fetch_position = false })
             if user_info == nil then
                 results[i].error = 'user not found'
             else
