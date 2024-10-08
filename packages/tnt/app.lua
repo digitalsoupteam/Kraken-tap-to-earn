@@ -393,7 +393,7 @@ function to_user_info(user, opts)
             user.session_taps = 0
             user.session_until = 0
             -- do not update ref_user
-            if type(opts) == 'table' and opts['fetch_ref_user'] ~= nil then
+            if type(opts) == 'table' and opts['fetch_ref_user'] == true then
                 box.space.users:update({ user.user_id }, { { '=', 'session_taps', 0 }, { '=', 'session_until', 0 } })
             end
         end
