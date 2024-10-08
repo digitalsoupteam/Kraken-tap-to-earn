@@ -1,16 +1,4 @@
-import type { ServerWebSocket } from "bun";
-import {
-    JsonRpcBaseError,
-    type AllSuccessTypes,
-    type JsonRPCRequests,
-    type WebSocketData,
-    JsonRpcError,
-    type AllErrorTypes,
-    type JsonRPCResponses,
-} from "./types";
-import { handleSendTaps } from "./handlers/send_taps";
-import { handleGetTopUsers } from "./handlers/get_top_users";
-import { handleGetUser } from "./handlers/get_user";
+import { JsonRpcBaseError, type JsonRPCRequests } from "./types";
 
 export function parseJsonRPCMessage(message: string): JsonRPCRequests {
     const obj = JSON.parse(message);

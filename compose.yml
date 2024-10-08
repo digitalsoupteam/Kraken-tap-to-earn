@@ -2,14 +2,14 @@ version: "2"
 
 services:
     tarantool:
-        image: tarantool-kraken:2.10
+        image: tarantool-kraken:2.11
         build:
             context: ./packages/tnt
 
         environment:
             TARANTOOL_USER_NAME: tnt
             TARANTOOL_USER_PASSWORD: tnt
-            TARANTOOL_SLAB_ALLOC_ARENA: 0.4
+            TARANTOOL_SLAB_ALLOC_ARENA: 0.5
 
         volumes:
             - ./packages/tnt/app.lua:/opt/tarantool/app.lua

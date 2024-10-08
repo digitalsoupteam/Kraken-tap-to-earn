@@ -140,7 +140,7 @@ class Client {
         console.log("getUserInfo", userId);
         let result = await this.tarantool.call("get_user_details", userId);
         if (result && result.length > 0) {
-            return toCamelCase(result[0]) as any;
+            return toCamelCase(result[0][0]) as any;
         }
         throw new Error("User not found");
     }

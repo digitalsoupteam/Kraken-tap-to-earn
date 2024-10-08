@@ -2,6 +2,7 @@
 ---@diagnostic disable: lowercase-global
 local uuid = require('uuid')
 local log = require("log")
+local fiber = require 'fiber'
 local ws = require("websocket")
 local json = require("json")
 
@@ -12,6 +13,7 @@ log.cfg { format = 'json', level = 'verbose' }
 box.cfg {
     txn_isolation = 'read-committed',
     readahead = 64 * 1024,
+    -- readahead = 1 * 1024 * 1024,
 }
 box.once('schema', function()
     box.schema.sequence.create('user_id_seq')
@@ -115,7 +117,7 @@ local settings = {
 --- @param old_user user
 --- @param new_user user
 function on_user_update(old_user, new_user)
-    local user = to_user_info(new_user:tomap({ names_only = true }), { fetch_ref_user = true , fetch_position = false })
+    local user = to_user_info(new_user:tomap({ names_only = true }), { fetch_ref_user = false, fetch_position = false })
     broadcast(user)
 end
 
@@ -310,9 +312,7 @@ end
 --- @return userInfo
 function create_anonymous_user(ref_user_external_id)
     local ref_user_id = 0
-    -- log.info('create anonymous user')
     if ref_user_external_id ~= nil then
-        -- log.info('ref_user_external_id: %s', ref_user_external_id)
         local ref_user = get_user(ref_user_external_id)
         if ref_user == nil then
             error('ref user not found')
@@ -321,6 +321,7 @@ function create_anonymous_user(ref_user_external_id)
     end
 
     local user_id = box.atomic(create_new_user, "unknown kraken", ref_user_id)
+    fiber.yield()
     local user = get_user_info(user_id)
     if user == nil then
         error('user not found')
@@ -343,6 +344,7 @@ function get_or_create_user_from_tg(id, username, ref_user_external_id)
         ref_user_id = ref_user.user_id
     end
     local res = box.space.tg2user.index.pk:get(id)
+    fiber.yield()
     local user_id
     if res == nil then
         -- log.info('create new user from telegram id: %s (%s)', id, username)
@@ -391,7 +393,7 @@ function to_user_info(user, opts)
             user.session_taps = 0
             user.session_until = 0
             -- do not update ref_user
-            if type(opts) == 'table' and opts['fetch_ref_user'] == true then
+            if type(opts) == 'table' and opts['fetch_ref_user'] ~= nil then
                 box.space.users:update({ user.user_id }, { { '=', 'session_taps', 0 }, { '=', 'session_until', 0 } })
             end
         end
@@ -466,6 +468,7 @@ function get_top_referrals(by_user_id, limit)
     if user == nil then
         error('user not found')
     end
+    fiber.yield()
     local users = box.space.users.index.ref_user_id:select({ user.user_id }, { limit = limit, iterator = 'REQ' })
     local results = {}
     for i = 1, #users do
@@ -483,6 +486,7 @@ function get_top_users(limit)
         limit = 100
     end
     local users = box.space.users.index.points:select({}, { limit = limit, iterator = 'REQ' })
+    fiber.yield()
     local results = {}
     for i = 1, #users do
         results[i] = to_user_info(users[i]:tomap({ names_only = true }), {})
@@ -497,6 +501,7 @@ end
 function get_users_around_of(user_id, limit)
     -- log.info('get users around: %s', user_id)
     local user_info = get_user_info(user_id)
+    fiber.yield()
     if user_info == nil then
         error('user not found')
     end
@@ -505,8 +510,10 @@ function get_users_around_of(user_id, limit)
     end
     local above = box.space.users.index.position:select({ user_info.points, user_info.id },
         { limit = limit, iterator = 'GT' })
+    fiber.yield()
     local below = box.space.users.index.position:select({ user_info.points, user_info.id },
         { limit = limit, iterator = 'LT' })
+    fiber.yield()
     local results = { above = {}, below = {} }
     for i = 1, #above do
         results.above[i] = to_user_info(above[i]:tomap({ names_only = true }), {})
@@ -564,6 +571,7 @@ function register_taps(batch)
             local taps = batch[i].taps
             local effective_taps = #taps
             local user_info = get_user_info(user_id, { fetch_ref_user = false, fetch_position = false })
+            fiber.yield()
             if user_info == nil then
                 results[i].error = 'user not found'
             else

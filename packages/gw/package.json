@@ -31,7 +31,7 @@
         "eslint-plugin-react-hooks": "^5.1.0-rc.0",
         "eslint-plugin-react-refresh": "^0.4.9",
         "globals": "^15.9.0",
-	"tarantool-driver": "github:goodwise/node-tarantool-driver#ca3fde4808eaa56105985562d1e05a19df2d84b9",
+        "tarantool-driver": "github:goodwise/node-tarantool-driver#ca3fde4808eaa56105985562d1e05a19df2d84b9",
         "typescript": "^5.5.3",
         "typescript-eslint": "^8.0.1"
     }
