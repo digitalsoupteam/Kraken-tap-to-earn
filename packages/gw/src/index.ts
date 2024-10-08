@@ -122,161 +122,161 @@ const app = new Elysia()
             }),
         }
     )
-    .guard((app) =>
-        app.ws("/ws", {
-            beforeHandle(ws) {
-                if (!ws.userId) {
-                    throw new Error("Unauthorized");
-                }
-            },
-            async open(ws: WS) {
-                if (!ws.data.userId) {
-                    throw new Error("Unauthorized");
-                }
-                console.log(ws.remoteAddress, "connected", ws.data.userId);
-            },
-            body: t.Intersect(
-                [
-                    t.Object({
-                        jsonrpc: t.Const("2.0"),
-                        id: t.Optional(t.Number()),
-                    }),
-                    t.Union([
-                        t.Object({
-                            method: t.Literal("ping"),
-                            params: t.Optional(t.Any()),
-                        }),
-                        t.Object({
-                            method: t.Literal("getUser"),
-                        }),
-                        t.Object({
-                            method: t.Literal("sendTaps"),
-                            params: SchemaSendTaps,
-                        }),
-                        t.Object({
-                            method: t.Literal("updateProfile"),
-                            params: SchemaSendUpdateProfile,
-                        }),
-                        t.Object({
-                            method: t.Literal("getTopUsers"),
-                            params: SchemaGetTopUsers,
-                        }),
-                        t.Object({
-                            method: t.Literal("getUsersAround"),
-                            params: SchemaGetUsersAroundOf,
-                        }),
-                        t.Object({
-                            method: t.Literal("getTopReferrals"),
-                            params: SchemaGetTopReferrals,
-                        }),
-                        t.Object({
-                            method: t.Literal("subscribe"),
-                        }),
-                        t.Object({
-                            method: t.Literal("unsubscribe"),
-                        }),
-                    ]),
-                ],
-                { additionalProperties: false }
-            ),
-            async message(ws: WS, message) {
-                console.log(
-                    "message",
-                    ws.remoteAddress,
-                    ws.data.store,
-                    ws.data.userId
-                );
-                // support only string messages
-                console.log("JsonRPCRequest", ws.remoteAddress, message);
-                let result: AllSuccessTypes | null = null;
-                let response: JsonRPCResponses;
-                let error: AllErrorTypes = new JsonRpcBaseError(
-                    "Unknown error",
-                    -32603
-                );
-                try {
-                    switch (message.method) {
-                        case "sendTaps":
-                            let response = await handleSendTaps(
-                                ws,
-                                message.params
-                            );
-                            result = response[0];
-                            break;
-                        case "ping":
-                            result = "pong";
-                            break;
-                        case "getUser":
-                            result = await handleGetUser(ws, {});
-                            break;
-                        case "updateProfile":
-                            result = await handleSendUpdateProfile(
-                                ws,
-                                message.params
-                            );
-                            break;
-                        case "getTopUsers":
-                            result = await handleGetTopUsers(
-                                ws,
-                                message.params
-                            );
-                            break;
-                        case "getTopReferrals":
-                            result = await handleGetTopReferrals(
-                                ws,
-                                message.params
-                            );
-                            break;
-                        case "getUsersAround":
-                            result = await handleGetUsersAroundOf(
-                                ws,
-                                message.params
-                            );
-                            break;
-                        case "subscribe":
-                            ws.subscribe(`user:${ws.data.userId}`);
-                            result = "ok";
-                            break;
-                        case "unsubscribe":
-                            ws.unsubscribe(`user:${ws.data.userId}`);
-                            result = "ok";
-                            break;
-                        default:
-                            throw new JsonRpcBaseError(
-                                // @ts-ignore
-                                `Method ${message.method} not found`,
-                                -32601
-                            );
+    .guard(
+        {
+            query: t.Object({
+                jwt: t.String(),
+            }),
+        },
+        (app) =>
+            app.ws("/ws", {
+                beforeHandle(ctx) {
+                    if (!ctx.userId) {
+                        return (ctx.set.status = 401);
                     }
-                } catch (e) {
-                    if (e instanceof JsonRpcError) {
-                        error = e;
-                    } else {
-                        let errorMessage = (e as Error).toString();
-                        if (errorMessage.startsWith("TarantoolError:")) {
-                            errorMessage = errorMessage
-                                .split(":")
-                                .slice(3)
-                                .join(":")
-                                .slice(1);
+                },
+                body: t.Intersect(
+                    [
+                        t.Object({
+                            jsonrpc: t.Const("2.0"),
+                            id: t.Optional(t.Number()),
+                        }),
+                        t.Union([
+                            t.Object({
+                                method: t.Literal("ping"),
+                                params: t.Optional(t.Any()),
+                            }),
+                            t.Object({
+                                method: t.Literal("getUser"),
+                            }),
+                            t.Object({
+                                method: t.Literal("sendTaps"),
+                                params: SchemaSendTaps,
+                            }),
+                            t.Object({
+                                method: t.Literal("updateProfile"),
+                                params: SchemaSendUpdateProfile,
+                            }),
+                            t.Object({
+                                method: t.Literal("getTopUsers"),
+                                params: SchemaGetTopUsers,
+                            }),
+                            t.Object({
+                                method: t.Literal("getUsersAround"),
+                                params: SchemaGetUsersAroundOf,
+                            }),
+                            t.Object({
+                                method: t.Literal("getTopReferrals"),
+                                params: SchemaGetTopReferrals,
+                            }),
+                            t.Object({
+                                method: t.Literal("subscribe"),
+                            }),
+                            t.Object({
+                                method: t.Literal("unsubscribe"),
+                            }),
+                        ]),
+                    ],
+                    { additionalProperties: false }
+                ),
+                async message(ws: WS, message) {
+                    console.log(
+                        "message",
+                        ws.remoteAddress,
+                        ws.data.store,
+                        ws.data.userId
+                    );
+                    // support only string messages
+                    console.log("JsonRPCRequest", ws.remoteAddress, message);
+                    let result: AllSuccessTypes | null = null;
+                    let response: JsonRPCResponses;
+                    let error: AllErrorTypes = new JsonRpcBaseError(
+                        "Unknown error",
+                        -32603
+                    );
+                    try {
+                        switch (message.method) {
+                            case "sendTaps":
+                                let response = await handleSendTaps(
+                                    ws,
+                                    message.params
+                                );
+                                result = response[0];
+                                break;
+                            case "ping":
+                                result = "pong";
+                                break;
+                            case "getUser":
+                                result = await handleGetUser(ws, {});
+                                break;
+                            case "updateProfile":
+                                result = await handleSendUpdateProfile(
+                                    ws,
+                                    message.params
+                                );
+                                break;
+                            case "getTopUsers":
+                                result = await handleGetTopUsers(
+                                    ws,
+                                    message.params
+                                );
+                                break;
+                            case "getTopReferrals":
+                                result = await handleGetTopReferrals(
+                                    ws,
+                                    message.params
+                                );
+                                break;
+                            case "getUsersAround":
+                                result = await handleGetUsersAroundOf(
+                                    ws,
+                                    message.params
+                                );
+                                break;
+                            case "subscribe":
+                                ws.subscribe(`user:${ws.data.userId}`);
+                                result = "ok";
+                                break;
+                            case "unsubscribe":
+                                ws.unsubscribe(`user:${ws.data.userId}`);
+                                result = "ok";
+                                break;
+                            default:
+                                throw new JsonRpcBaseError(
+                                    // @ts-ignore
+                                    `Method ${message.method} not found`,
+                                    -32601
+                                );
                         }
-                        error = new JsonRpcBaseError(errorMessage, -32603);
+                    } catch (e) {
+                        if (e instanceof JsonRpcError) {
+                            error = e;
+                        } else {
+                            let errorMessage = (e as Error).toString();
+                            if (errorMessage.startsWith("TarantoolError:")) {
+                                errorMessage = errorMessage
+                                    .split(":")
+                                    .slice(3)
+                                    .join(":")
+                                    .slice(1);
+                            }
+                            error = new JsonRpcBaseError(errorMessage, -32603);
+                        }
                     }
-                }
-                response = {
-                    jsonrpc: "2.0",
-                    id: message.id,
-                    error: result === null ? error : undefined,
-                    result: result !== null ? result : undefined,
-                };
-                if (!response.id && error === null) return;
-                console.log("JsonRPCResponse", ws.remoteAddress, response);
-                ws.send(response);
-            },
-            async close(ws) {
-                console.log(ws.remoteAddress, "disconnected");
-            },
-        })
+                    response = {
+                        jsonrpc: "2.0",
+                        id: message.id,
+                        error: result === null ? error : undefined,
+                        result: result !== null ? result : undefined,
+                    };
+                    if (!response.id && error === null) return;
+                    console.log("JsonRPCResponse", ws.remoteAddress, response);
+                    ws.send(response);
+                },
+                async close(ws) {
+                    console.log(ws.remoteAddress, "disconnected");
+                },
+            })
     )
     .onStart(async () => {
         let build = async () => {
