@@ -10,6 +10,7 @@
         "test": "bun test"
     },
     "dependencies": {
+        "@bogeychan/elysia-logger": "^0.1.4",
         "@elysiajs/jwt": "^1.1.0",
         "@elysiajs/static": "^1.1.0",
         "@types/lodash": "^4.17.7",
