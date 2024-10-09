@@ -117,7 +117,7 @@ local settings = {
 --- @param old_user user
 --- @param new_user user
 function on_user_update(old_user, new_user)
-    local user = to_user_info(new_user:tomap({ names_only = true }), { fetch_ref_user = false, fetch_position = false })
+    local user = to_user_info(new_user:tomap({ names_only = true }), {})
     broadcast(user)
 end
 
@@ -322,7 +322,7 @@ function create_anonymous_user(ref_user_external_id)
 
     local user_id = box.atomic(create_new_user, "unknown kraken", ref_user_id)
     fiber.yield()
-    local user = get_user_info(user_id)
+    local user = get_user_info(user_id, { fetch_ref_user = true, fetch_position = true })
     if user == nil then
         error('user not found')
     end
@@ -424,7 +424,7 @@ function to_user_info(user, opts)
         days_updated_at = user.days_updated_at,
     }
     if opts ~= nil and opts['fetch_position'] == true then
-        result.position = get_position_of(user)
+        result.position = get_position_of(user.user_id, user.points)
     end
     if opts ~= nil and opts['fetch_ref_user'] == true and user.ref_user_id ~= nil then
         result.ref_user = get_user_info(user.ref_user_id, {})
@@ -525,10 +525,11 @@ function get_users_around_of(user_id, limit)
 end
 
 ---Get user position
----@param user_info userInfo
+---@param user_id number
+---@param points number
 ---@return number
-function get_position_of(user_info)
-    return box.space.users.index.points:count({ user_info.points, user_info.id }, { iterator = 'GE' })
+function get_position_of(user_id, points)
+    return box.space.users.index.position:count({ points, user_id }, { iterator = 'GE' })
 end
 
 ---Validate taps batch item
@@ -570,7 +571,7 @@ function register_taps(batch)
             local user_id = batch[i].user_id
             local taps = batch[i].taps
             local effective_taps = #taps
-            local user_info = get_user_info(user_id, { fetch_ref_user = false, fetch_position = false })
+            local user_info = get_user_info(user_id, { fetch_ref_user = true })
             fiber.yield()
             if user_info == nil then
                 results[i].error = 'user not found'
@@ -675,7 +676,7 @@ function register_taps(batch)
 end
 
 box.once('fixtures', function()
-    -- log.info("self-check users")
+    log.info("self-check users")
     local ref_user = create_anonymous_user()
     box.space.users:update({ ref_user.id },
         { { '=', 'external_user_id', uuid.fromstr('e92148b9-0c2c-4b15-869a-d248149d0f55') } })
@@ -687,7 +688,7 @@ box.once('fixtures', function()
     local user5 = get_or_create_user_from_tg('5', 'user5', user2.user_id)
     local user6 = get_or_create_user_from_tg('5', 'user5', ref_user.user_id)
 
-    -- log.info("self-check taps")
+    log.info("self-check taps")
     register_taps({
         {
             user_id = user2.user_id,
@@ -724,13 +725,13 @@ box.once('fixtures', function()
         },
     })
 
-    -- log.info("self-check top users")
+    log.info("self-check top users")
     get_top_users(100)
 
-    -- log.info("self-check top referrals")
+    log.info("self-check top referrals")
     get_top_referrals(ref_user.user_id, 100)
 
-    -- log.info("self-check users around")
+    log.info("self-check users around")
     get_users_around_of(ref_user.user_id, 100)
 end)
 -- vim:ts=4 ss=4 sw=4 expandtab

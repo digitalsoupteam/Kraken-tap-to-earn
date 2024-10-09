@@ -1,8 +1,6 @@
 import { watch } from "fs";
 import html from "bun-plugin-html";
-import { handleGetTopUsers, SchemaGetTopUsers } from "./handlers/get_top_users";
-import { handleGetUser } from "./handlers/get_user";
-import { handleSendTaps, SchemaSendTaps } from "./handlers/send_taps";
+import { logger } from "@bogeychan/elysia-logger";
 import { jwt } from "@elysiajs/jwt";
 import {
     AllErrorTypes,
@@ -14,8 +12,12 @@ import {
 } from "./types";
 import { Elysia, t } from "elysia";
 import { env } from "@yolk-oss/elysia-env";
-import getTarantool, { TntSubscribe } from "./tnt";
 import staticPlugin from "@elysiajs/static";
+
+import getTarantool, { TntSubscribe } from "./tnt";
+import { handleGetTopUsers, SchemaGetTopUsers } from "./handlers/get_top_users";
+import { handleGetUser } from "./handlers/get_user";
+import { handleSendTaps, SchemaSendTaps } from "./handlers/send_taps";
 import {
     createWebAppSecret,
     decodeInitData,
@@ -35,12 +37,19 @@ import {
 } from "./handlers/get_around_of";
 
 const app = new Elysia()
+    .use(
+        logger({
+            autoLogging: true,
+            level: process.env.LOG_LEVEL ?? "debug",
+        })
+    )
     // @ts-ignore
     .onStart((ctx) => {
         if (!ctx.server) {
             return;
         }
         console.log("Listening on " + ctx.server.url);
+        // @ts-ignore
         new TntSubscribe(ctx.server).connect();
     })
     .use(staticPlugin())
@@ -87,7 +96,6 @@ const app = new Elysia()
         async (ctx) => {
             let tnt = await getTarantool();
             const user = await tnt.createAnonymousUser(ctx.body.referrer_id);
-            console.log("createAnonymousUser", user);
             return { jwt: await ctx.jwt.sign({ id: user.userId }) };
         },
         {
@@ -180,16 +188,10 @@ const app = new Elysia()
                     { additionalProperties: false }
                 ),
                 async message(ws: WS, message) {
-                    console.log(
-                        "message",
-                        ws.remoteAddress,
-                        ws.data.store,
-                        ws.data.userId
-                    );
                     // support only string messages
-                    console.log("JsonRPCRequest", ws.remoteAddress, message);
                     let result: AllSuccessTypes | null = null;
                     let response: JsonRPCResponses;
+                    let start = process.hrtime.bigint() / 1000n;
                     let error: AllErrorTypes = new JsonRpcBaseError(
                         "Unknown error",
                         -32603
@@ -269,12 +271,19 @@ const app = new Elysia()
                         error: result === null ? error : undefined,
                         result: result !== null ? result : undefined,
                     };
+                    ws.data.log.info({
+                        responseTime:
+                            Number(process.hrtime.bigint() / 1000n - start) /
+                            1_000,
+                        userId: ws.data.userId,
+                        message,
+                        error: result === null ? error : undefined,
+                        result: result !== null ? result : undefined,
+                        remoteAddress: ws.remoteAddress,
+                    });
                     if (!response.id && error === null) return;
-                    console.log("JsonRPCResponse", ws.remoteAddress, response);
+
                     ws.send(response);
-                },
-                async close(ws) {
-                    console.log(ws.remoteAddress, "disconnected");
                 },
             })
     )
