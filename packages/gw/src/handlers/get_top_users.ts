@@ -15,7 +15,6 @@ export async function handleGetTopUsers(
     ws: WS,
     data: GetTopUsersRequest
 ): Promise<GetTopUsersResponse> {
-    console.log("handleGetTopUsers", data);
     let tnt = await getTarantool();
     return await tnt.getTopUsers(data.limit);
 }

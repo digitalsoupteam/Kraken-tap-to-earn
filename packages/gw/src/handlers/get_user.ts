@@ -9,7 +9,6 @@ export async function handleGetUser(
     ws: WS,
     data: GetUserRequest
 ): Promise<GetUserResponse> {
-    console.log("handleGetUser", data);
     let tnt = await getTarantool();
     return await tnt.getUserInfo(ws.data.userId);
 }

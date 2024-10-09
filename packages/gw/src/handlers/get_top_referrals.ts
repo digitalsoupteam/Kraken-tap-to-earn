@@ -16,7 +16,6 @@ export async function handleGetTopReferrals(
     ws: WS,
     data: GetTopReferralsRequest
 ): Promise<GetTopReferralsResponse> {
-    console.log("handleGetTopReferrals", data);
     let tnt = await getTarantool();
     return await tnt.getTopReferrals(ws.data.userId, data.limit);
 }

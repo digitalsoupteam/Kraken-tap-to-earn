@@ -19,7 +19,6 @@ export async function handleGetUsersAroundOf(
     ws: WS,
     data: GetUsersAroundOfRequest
 ): Promise<GetUsersAroundOfResponse> {
-    console.log("handleGetUsersAroundOf", data);
     let tnt = await getTarantool();
     return await tnt.getUsersAround(ws.data.userId, data.limit);
 }
