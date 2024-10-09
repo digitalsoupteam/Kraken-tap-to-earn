@@ -7,8 +7,8 @@ export type SendTapsError = JsonRpcError<1005, "SendTapsError">;
 export const SchemaSendTaps = t.Array(
     t.Object(
         {
-            x: t.Number(),
-            y: t.Number(),
+            x: t.Number({ minimum: 0, maximum: 20000, multipleOf: 1 }),
+            y: t.Number({ minimum: 0, maximum: 20000, multipleOf: 1 }),
         },
         { additionalProperties: false }
     )
