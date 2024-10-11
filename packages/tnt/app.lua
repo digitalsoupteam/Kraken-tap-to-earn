@@ -322,7 +322,7 @@ function create_anonymous_user(ref_user_external_id)
 
     local user_id = box.atomic(create_new_user, "unknown kraken", ref_user_id)
     fiber.yield()
-    local user = get_user_info(user_id, { fetch_ref_user = true, fetch_position = true })
+    local user = get_user_info(user_id, { fetch_ref_user = true, fetch_position = false })
     if user == nil then
         error('user not found')
     end
@@ -440,7 +440,7 @@ function get_user_details(user_id)
     if user == nil then
         return nil
     end
-    return to_user_info(user, { fetch_ref_user = true, fetch_position = true })
+    return to_user_info(user, { fetch_ref_user = true, fetch_position = false })
 end
 
 ---Get user info
