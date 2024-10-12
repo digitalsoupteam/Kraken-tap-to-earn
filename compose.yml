@@ -3,6 +3,13 @@ version: "2"
 services:
     tarantool:
         image: tarantool-kraken:2.11
+        ulimits:
+            core:
+                soft: -1
+                hard: -1
+        cap_add:
+            - SYS_PTRACE
+
         build:
             context: ./packages/tnt
 
@@ -12,8 +19,8 @@ services:
             TARANTOOL_SLAB_ALLOC_ARENA: 2
 
         volumes:
+            - ./coredumps:/coredumps
             - ./packages/tnt/app.lua:/opt/tarantool/app.lua
-            - ./packages/tnt/wg.lua:/opt/tarantool/wg.lua
             - tarantool:/var/lib/tarantool
 
         command: ["tarantool", "app.lua"]
