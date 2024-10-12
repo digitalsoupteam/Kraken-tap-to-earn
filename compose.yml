@@ -9,7 +9,7 @@ services:
         environment:
             TARANTOOL_USER_NAME: tnt
             TARANTOOL_USER_PASSWORD: tnt
-            TARANTOOL_SLAB_ALLOC_ARENA: 0.5
+            TARANTOOL_SLAB_ALLOC_ARENA: 2
 
         volumes:
             - ./packages/tnt/app.lua:/opt/tarantool/app.lua
