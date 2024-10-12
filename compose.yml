@@ -13,6 +13,7 @@ services:
 
         volumes:
             - ./packages/tnt/app.lua:/opt/tarantool/app.lua
+            - ./packages/tnt/wg.lua:/opt/tarantool/wg.lua
             - tarantool:/var/lib/tarantool
 
         command: ["tarantool", "app.lua"]

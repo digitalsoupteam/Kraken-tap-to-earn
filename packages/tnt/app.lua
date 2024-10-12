@@ -1,10 +1,12 @@
 #!/usr/bin/env tarantool
 ---@diagnostic disable: lowercase-global
-local uuid = require('uuid')
+local uuid = require("uuid")
 local log = require("log")
-local fiber = require 'fiber'
+local fiber = require("fiber")
 local ws = require("websocket")
 local json = require("json")
+local sync = require("sync")
+
 
 local AGGREGATION_PERIODS = { 86400, 604800, 2592000, 7776000 }
 local SECONDS_IN_DAY = 24 * 60 * 60
@@ -562,118 +564,139 @@ end
 function register_taps(batch)
     -- log.info('register taps (%d)', #batch)
     local results = {}
+    local wg = sync.wg()
     local now = os.time()
     for i = 1, #batch do
         results[i] = { nil, nil }
         if validate_batch(batch) == false then
             results[i].error = 'invalid batch item'
         else
-            local user_id = batch[i].user_id
-            local taps = batch[i].taps
-            local effective_taps = #taps
-            local user_info = get_user_info(user_id, { fetch_ref_user = true })
-            fiber.yield()
-            if user_info == nil then
-                results[i].error = 'user not found'
-            else
-                results[i].user_info = user_info
-                if user_info.session_left == 0 then
-                    results[i].error = 'time quota exceeded'
-                elseif user_info.session_taps_left == 0 then
-                    results[i].error = 'taps quota exceeded'
-                else
-                    local inserted_taps = 0
-                    if user_info.session_taps_left < effective_taps then
-                        effective_taps = user_info.session_taps_left
-                    end
-                    for j = 1, #taps do
-                        local tap = taps[j]
-                        if tap['x'] == nil or tap['y'] == nil then
-                            results[i].error = 'invalid tap'
-                            break
-                        end
-                        box.space.taps:insert({ box.NULL, user_info.id, now, tap['x'], tap['y'] })
-                        inserted_taps = inserted_taps + 1
-                    end
-                    box.atomic(function()
-                        local limited_days = user_info.days_in_row
-                        if limited_days > settings.days_in_row_limit then
-                            limited_days = settings.days_in_row_limit
-                        end
-                        local days_multiplier = limited_days * settings.days_in_row_multiplier
-                        local inserted_points = inserted_taps + inserted_taps * days_multiplier
-                        local days = user_info.days
-                        local days_in_row = user_info.days_in_row
-                        local days_updated_at = user_info.days_updated_at
-
-                        for j = 1, #AGGREGATION_PERIODS do
-                            local period = AGGREGATION_PERIODS[j]
-                            local period_time = math.floor(now / period) * period
-                            box.space.points_aggs:upsert(
-                                { user_info.id, period, period_time, inserted_points },
-                                { { '+', 4, inserted_points } }
-                            )
-                        end
-
-                        local user_updates = {
-                            { '+', 'session_taps', inserted_taps },
-                            { '+', 'taps',         inserted_taps },
-                            { '+', 'points',       inserted_points },
-                        }
-
-                        if now > days_updated_at + SECONDS_IN_DAY then -- wait one day
-                            days = days + 1                            -- total counter
-
-                            if now > days_updated_at + SECONDS_IN_DAY * 2 then
-                                days_in_row = 1               -- if more 2 days, reset to default
-                            else
-                                days_in_row = days_in_row + 1 -- if less 2 days, endless increment
+            fiber.create(function()
+                wg:add()
+                box.atomic({ txn_isolation = "read-confirmed" }, function()
+                    local user_id = batch[i].user_id
+                    local taps = batch[i].taps
+                    local effective_taps = #taps
+                    local user_info = get_user_info(user_id, { fetch_ref_user = true })
+                    if user_info == nil then
+                        results[i].error = 'user not found'
+                        return
+                    else
+                        results[i].user_info = user_info
+                        if user_info.session_left == 0 then
+                            results[i].error = 'time quota exceeded'
+                            return
+                        elseif user_info.session_taps_left == 0 then
+                            results[i].error = 'taps quota exceeded'
+                            return
+                        else
+                            local inserted_taps = 0
+                            if user_info.session_taps_left < effective_taps then
+                                effective_taps = user_info.session_taps_left
                             end
+                            for j = 1, #taps do
+                                local tap = taps[j]
+                                if tap['x'] == nil or tap['y'] == nil then
+                                    results[i].error = 'invalid tap'
+                                    return
+                                end
+                                inserted_taps = inserted_taps + 1
+                                taps_channel:put({ box.NULL, user_info.id, now, tap['x'], tap['y'] })
+                            end
+                            local limited_days = user_info.days_in_row
+                            if limited_days > settings.days_in_row_limit then
+                                limited_days = settings.days_in_row_limit
+                            end
+                            local days_multiplier = limited_days * settings.days_in_row_multiplier
+                            local inserted_points = inserted_taps + inserted_taps * days_multiplier
+                            local days = user_info.days
+                            local days_in_row = user_info.days_in_row
+                            local days_updated_at = user_info.days_updated_at
 
-                            days_updated_at = now -- save checkpoint
-
-                            table.insert(user_updates, { '=', 'days', days })
-                            table.insert(user_updates, { '=', 'days_in_row', days_in_row })
-                            table.insert(user_updates, { '=', 'days_updated_at', days_updated_at })
-                        end
-
-                        if user_info.session_taps == 0 then
-                            table.insert(user_updates, { '=', 'session_until', now + user_info.level.quota_period })
-                            results[i].user_info['session_until'] = now + user_info.level.quota_period
-                        end
-
-                        box.space.users:update({ user_info.id }, user_updates)
-
-                        -- Referrals
-                        -- 1 level
-                        local ref1_id = user_info.ref_user_id
-                        if ref1_id ~= 0 then
-                            local ref1_points = inserted_points * settings.referral_levels[1]
-                            box.space.users:update(
-                                { ref1_id },
-                                { { '+', 'points', ref1_points } }
-                            )
-                            -- 2 level
-                            local ref2_id = user_info.ref_user.ref_user_id
-                            local ref2_points = inserted_points * settings.referral_levels[2]
-                            if ref2_id ~= 0 then
-                                box.space.users:update(
-                                    { ref2_id },
-                                    { { '+', 'points', ref2_points } }
+                            for j = 1, #AGGREGATION_PERIODS do
+                                local period = AGGREGATION_PERIODS[j]
+                                local period_time = math.floor(now / period) * period
+                                box.space.points_aggs:upsert(
+                                    { user_info.id, period, period_time, inserted_points },
+                                    { { '+', 4, inserted_points } }
                                 )
                             end
+
+                            local user_updates = {
+                                { '+', 'session_taps', inserted_taps },
+                                { '+', 'taps',         inserted_taps },
+                                { '+', 'points',       inserted_points },
+                            }
+
+                            if now > days_updated_at + SECONDS_IN_DAY then -- wait one day
+                                days = days + 1                            -- total counter
+
+                                if now > days_updated_at + SECONDS_IN_DAY * 2 then
+                                    days_in_row = 1               -- if more 2 days, reset to default
+                                else
+                                    days_in_row = days_in_row + 1 -- if less 2 days, endless increment
+                                end
+
+                                days_updated_at = now -- save checkpoint
+
+                                table.insert(user_updates, { '=', 'days', days })
+                                table.insert(user_updates, { '=', 'days_in_row', days_in_row })
+                                table.insert(user_updates, { '=', 'days_updated_at', days_updated_at })
+                            end
+
+                            if user_info.session_taps == 0 then
+                                table.insert(user_updates, { '=', 'session_until', now + user_info.level.quota_period })
+                                results[i].user_info['session_until'] = now + user_info.level.quota_period
+                            end
+
+                            box.space.users:update({ user_info.id }, user_updates)
+
+                            -- Referrals
+                            -- 1 level
+                            local ref1_id = user_info.ref_user_id
+                            if ref1_id ~= 0 then
+                                local ref1_points = inserted_points * settings.referral_levels[1]
+                                box.space.users:update(
+                                    { ref1_id },
+                                    { { '+', 'points', ref1_points } }
+                                )
+                                -- 2 level
+                                local ref2_id = user_info.ref_user.ref_user_id
+                                local ref2_points = inserted_points * settings.referral_levels[2]
+                                if ref2_id ~= 0 then
+                                    box.space.users:update(
+                                        { ref2_id },
+                                        { { '+', 'points', ref2_points } }
+                                    )
+                                end
+                            end
+                            results[i].user_info['session_taps'] = user_info['session_taps'] + inserted_taps
+                            results[i].user_info['taps'] = user_info['taps'] + inserted_taps
+                            results[i].user_info['points'] = user_info['points'] + inserted_points
+                            results[i].user_info['session_taps_left'] = user_info['session_taps_left'] - inserted_taps
                         end
-                        results[i].user_info['session_taps'] = user_info['session_taps'] + inserted_taps
-                        results[i].user_info['taps'] = user_info['taps'] + inserted_taps
-                        results[i].user_info['points'] = user_info['points'] + inserted_points
-                        results[i].user_info['session_taps_left'] = user_info['session_taps_left'] - inserted_taps
-                    end)
-                end
-            end
+                    end
+                end)
+                wg:finish()
+            end)
         end
     end
+    wg:wait()
     return results
 end
+
+taps_channel = fiber.channel(1024)
+-- Taps logger fiber
+fiber.create(function()
+    while true do
+        local tap = taps_channel:get()
+        if tap == nil then
+            break
+        end
+        box.space.taps:insert(tap)
+    end
+end)
+
 
 box.once('fixtures', function()
     log.info("self-check users")
