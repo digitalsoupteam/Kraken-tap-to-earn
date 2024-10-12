@@ -83,6 +83,8 @@ const app = new Elysia()
         }
         return {
             userId: data.id,
+            lastMessageAt: Date.now(),
+            messageCount: 0,
         };
     })
     // .get("/", () => Bun.file("./public/index.html"))
@@ -188,6 +190,27 @@ const app = new Elysia()
                     { additionalProperties: false }
                 ),
                 async message(ws: WS, message) {
+                    let now = Date.now();
+                    if (
+                        ws.data.lastMessageAt &&
+                        now - ws.data.lastMessageAt > 1000 // TODO: configurable
+                    ) {
+                        ws.data.lastMessageAt = now;
+                        ws.data.messageCount = 1;
+                        // TODO: configurable
+                    } else if (ws.data.messageCount > 25) {
+                        ws.send({
+                            jsonrpc: "2.0",
+                            id: message.id,
+                            error: {
+                                code: -32603,
+                                message: "Too many requests",
+                            },
+                        });
+                        ws.close();
+                    } else {
+                        ws.data.messageCount++;
+                    }
                     // support only string messages
                     let result: AllSuccessTypes | null = null;
                     let response: JsonRPCResponses;
