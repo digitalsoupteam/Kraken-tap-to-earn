@@ -685,7 +685,7 @@ function register_taps(batch)
     return results
 end
 
-taps_channel = fiber.channel(1024)
+taps_channel = fiber.channel(100000)
 -- Taps logger fiber
 fiber.create(function()
     while true do
@@ -696,7 +696,6 @@ fiber.create(function()
         box.space.taps:insert(tap)
     end
 end)
-
 
 box.once('fixtures', function()
     log.info("self-check users")
@@ -712,16 +711,14 @@ box.once('fixtures', function()
     local user6 = get_or_create_user_from_tg('5', 'user5', ref_user.user_id)
 
     log.info("self-check taps")
+    user2_taps = {}
+    for i = 1, 6000 do
+        table.insert(user2_taps, { x = 1, y = 1 })
+    end
     register_taps({
         {
             user_id = user2.user_id,
-            taps = {
-                { x = 1, y = 1 },
-                { x = 1, y = 1 },
-                { x = 1, y = 1 },
-                { x = 1, y = 1 },
-                { x = 1, y = 1 },
-            }
+            taps = user2_taps
         },
         {
             user_id = user3.user_id,
