@@ -333,7 +333,7 @@ end
 
 --- Get or create user from telegram id (External)
 --- @param id string
---- @param username string
+--- @param username string | nil
 --- @param ref_user_external_id string | nil
 --- @return userInfo
 function get_or_create_user_from_tg(id, username, ref_user_external_id)
@@ -348,6 +348,9 @@ function get_or_create_user_from_tg(id, username, ref_user_external_id)
     local res = box.space.tg2user.index.pk:get(id)
     fiber.yield()
     local user_id
+    if username == nil then
+        username = 'unknown kraken'
+    end
     if res == nil then
         -- log.info('create new user from telegram id: %s (%s)', id, username)
         box.atomic(function()

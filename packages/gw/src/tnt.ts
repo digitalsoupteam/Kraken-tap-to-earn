@@ -165,7 +165,7 @@ class Client {
 
     async createUserFromTg(
         tg_id: number,
-        username: string,
+        username?: string,
         referrer_id?: string
     ): Promise<TntUserInfo> {
         let result = await this.tarantool.call(
