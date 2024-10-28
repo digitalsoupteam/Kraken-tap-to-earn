@@ -1,0 +1,6 @@
+services:
+  tgbot:
+    build: .
+    environment:
+      - BOT_TOKEN
+    restart: always
