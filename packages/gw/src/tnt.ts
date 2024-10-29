@@ -147,6 +147,14 @@ class Client {
         throw new Error("User not found");
     }
 
+    async refresh(userId: string): Promise<TntUserInfo> {
+        let result = await this.tarantool.call("refresh", userId);
+        if (result && result.length > 0) {
+            return toCamelCase(result[0][0]) as any;
+        }
+        throw new Error("User not found");
+    }
+
     async createAnonymousUser(referrer_id?: string): Promise<TntUserInfo> {
         let result = await this.tarantool.call(
             "create_anonymous_user",
