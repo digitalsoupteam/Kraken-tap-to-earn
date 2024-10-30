@@ -696,7 +696,7 @@ fiber.create(function()
         if tap == nil then
             break
         end
-        box.space.taps:insert(tap)
+        -- box.space.taps:insert(tap)
     end
 end)
 
