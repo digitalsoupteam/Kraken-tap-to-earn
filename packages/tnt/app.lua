@@ -592,7 +592,7 @@ function register_taps(batch)
                         if user_info.session_left == 0 then
                             results[i].error = 'time quota exceeded'
                             return
-                        elseif user_info.session_taps_left == 0 then
+                        elseif user_info.session_taps_left <= 0 then
                             results[i].error = 'taps quota exceeded'
                             return
                         else
@@ -650,7 +650,7 @@ function register_taps(batch)
                                 table.insert(user_updates, { '=', 'days_updated_at', days_updated_at })
                             end
 
-                            if user_info.session_taps == 0 then
+                            if user_info.session_taps <= 0 then
                                 table.insert(user_updates, { '=', 'session_until', now + user_info.level.quota_period })
                                 results[i].user_info['session_until'] = now + user_info.level.quota_period
                             end
