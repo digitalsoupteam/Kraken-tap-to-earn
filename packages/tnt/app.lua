@@ -119,7 +119,11 @@ local settings = {
 --- @param old_user user
 --- @param new_user user
 function on_user_update(old_user, new_user)
-    broadcast_channel:put(new_user)
+    fiber.new(function()
+        fiber.name("on_user_update")
+        local user = to_user_info(new_user:tomap({ names_only = true }), {})
+        broadcast(user)
+    end)
 end
 
 box.space.users:on_replace(on_user_update)
@@ -687,20 +691,8 @@ function register_taps(batch)
     return results
 end
 
-broadcast_channel = fiber.channel(100000)
 taps_channel = fiber.channel(100000)
--- broadcast fiber
-fiber.create(function()
-    while true do
-        local new_user = broadcast_channel:get()
-        if new_user == nil then
-            break
-        end
-        local user = to_user_info(new_user:tomap({ names_only = true }), {})
-        broadcast(user)
-        -- box.space.taps:insert(tap)
-    end
-end)
+
 -- Taps logger fiber
 fiber.create(function()
     while true do
@@ -708,7 +700,7 @@ fiber.create(function()
         if tap == nil then
             break
         end
-        -- box.space.taps:insert(tap)
+        box.space.taps:insert(tap)
     end
 end)
 
