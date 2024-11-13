@@ -387,6 +387,14 @@ function get_top_referrals(by_user_id, limit)
     return results
 end
 
+function reverseList(list)
+    local reversed = {}
+    for i = #list, 1, -1 do
+        table.insert(reversed, list[i])
+    end
+    return reversed
+end
+
 ---Get top 100 users (External)
 ---@param limit number
 ---@return userInfo[]
@@ -401,7 +409,7 @@ function get_top_users(limit)
     for i = 1, #users do
         results[i] = to_user_info(users[i])
     end
-    return results
+    return reverseList(results)
 end
 
 ---Get user around (External)
@@ -425,7 +433,7 @@ function get_users_around_of(user_id, limit)
     if err ~= nil then
         error(err)
     end
-    local above = tomap(above_res)
+    local above = reverseList(tomap(above_res))
     local below_res, err  = crud.select(
         'users',
         { { '<', 'position', { user_info.points, user_info.user_id } } },
