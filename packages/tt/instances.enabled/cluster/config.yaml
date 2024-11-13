@@ -1,0 +1,109 @@
+config:
+    context:
+        replicator_password:
+            from: env
+            env: REPLICATOR_PASSWORD
+        storage_password:
+            from: env
+            env: STORAGE_PASSWORD
+        app_password:
+            from: env
+            env: APP_PASSWORD
+
+credentials:
+    users:
+        replicator:
+            password: "{{ context.replicator_password }}"
+            roles: [replication]
+        storage:
+            password: "{{ context.storage_password }}"
+            roles: [sharding]
+        app:
+            password: "{{ context.app_password }}"
+            roles: [super]
+
+iproto:
+    advertise:
+        peer:
+            login: replicator
+        sharding:
+            login: storage
+
+sharding:
+    bucket_count: 1000
+
+groups:
+    storages:
+        roles: [roles.crud-storage]
+        app:
+            module: storage
+        sharding:
+            roles: [storage]
+        replication:
+            failover: manual
+        replicasets:
+            storage-a:
+                leader: storage-a-001
+                instances:
+                    storage-a-001:
+                        iproto:
+                            listen:
+                                - uri: "127.0.0.1:3311"
+                    storage-a-002:
+                        iproto:
+                            listen:
+                                - uri: "127.0.0.1:3312"
+            storage-b:
+                leader: storage-b-001
+                instances:
+                    storage-b-001:
+                        iproto:
+                            listen:
+                                - uri: "127.0.0.2:3311"
+                    storage-b-002:
+                        iproto:
+                            listen:
+                                - uri: "127.0.0.2:3312"
+            storage-c:
+                leader: storage-c-001
+                instances:
+                    storage-c-001:
+                        iproto:
+                            listen:
+                                - uri: "127.0.0.3:3311"
+                    storage-c-002:
+                        iproto:
+                            listen:
+                                - uri: "127.0.0.3:3312"
+
+    routers:
+        roles: [roles.crud-router]
+        app:
+            module: router
+        sharding:
+            roles: [router]
+        replicasets:
+            router-a:
+                instances:
+                    router-a-001:
+                        iproto:
+                            listen:
+                                - uri: "127.0.0.1:3301"
+                            advertise:
+                                client: "127.0.0.1:3301"
+            router-b:
+                instances:
+                    router-b-001:
+                        iproto:
+                            listen:
+                                - uri: "127.0.0.2:3301"
+                            advertise:
+                                client: "127.0.0.2:3301"
+            router-c:
+                instances:
+                    router-c-001:
+                        iproto:
+                            listen:
+                                - uri: "127.0.0.3:3301"
+                            advertise:
+                                client: "127.0.0.3:3301"
