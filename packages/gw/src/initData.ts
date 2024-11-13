@@ -3,6 +3,7 @@ import * as crypto from "crypto";
 export interface InitData {
     query_id: string | undefined;
     user: Record<string, any> | undefined;
+    userRaw: string | undefined;
     auth_date: number | undefined;
     start_param: string | undefined;
     chat_instance: string | undefined;
@@ -22,7 +23,6 @@ export function decodeInitData(initDataRaw: string): InitData {
     if (userParam) {
         userObj = JSON.parse(userParam);
     }
-
     const queryId = params.get("query_id");
     const authDate = parseInt(params.get("auth_date")!);
     const startParam = params.get("start_param");
@@ -33,6 +33,7 @@ export function decodeInitData(initDataRaw: string): InitData {
     return {
         query_id: queryId ?? undefined,
         user: userObj,
+        userRaw: userParam ?? undefined,
         start_param: startParam ?? undefined,
         chat_instance: chatInstance ?? undefined,
         chat_type: chatType ?? undefined,
@@ -49,7 +50,7 @@ export function verifyTelegramWebAppInitData(
     const checkList: string[] = [];
     for (const [k, v] of Object.entries({
         query_id: initData.query_id,
-        user: JSON.stringify(initData.user),
+        user: initData.userRaw,
         auth_date: initData.auth_date,
         start_param: initData.start_param,
         chat_instance: initData.chat_instance,
