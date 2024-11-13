@@ -71,8 +71,8 @@ class Client {
             host: "127.0.0.1",
             port: 3301,
             lazyConnect: true,
-            username: "tnt",
-            password: "tnt",
+            username: "app",
+            password: process.env.APP_PASSWORD || "app",
             retryStrategy: function (times) {
                 var delay = Math.min(times * 50, 2000);
                 return delay;
