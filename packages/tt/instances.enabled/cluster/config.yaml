@@ -48,33 +48,33 @@ groups:
                     storage-a-001:
                         iproto:
                             listen:
-                                - uri: "127.0.0.1:3311"
+                                - uri: "172.17.0.1:3311"
                     storage-a-002:
                         iproto:
                             listen:
-                                - uri: "127.0.0.1:3312"
+                                - uri: "172.17.0.1:3312"
             storage-b:
                 leader: storage-b-001
                 instances:
                     storage-b-001:
                         iproto:
                             listen:
-                                - uri: "127.0.0.2:3311"
+                                - uri: "172.17.0.1:3321"
                     storage-b-002:
                         iproto:
                             listen:
-                                - uri: "127.0.0.2:3312"
+                                - uri: "172.17.0.1:3322"
             storage-c:
                 leader: storage-c-001
                 instances:
                     storage-c-001:
                         iproto:
                             listen:
-                                - uri: "127.0.0.3:3311"
+                                - uri: "172.17.0.1:3331"
                     storage-c-002:
                         iproto:
                             listen:
-                                - uri: "127.0.0.3:3312"
+                                - uri: "172.17.0.1:3332"
 
     routers:
         roles: [roles.crud-router]
@@ -88,22 +88,22 @@ groups:
                     router-a-001:
                         iproto:
                             listen:
-                                - uri: "127.0.0.1:3301"
+                                - uri: "172.17.0.1:3301"
                             advertise:
-                                client: "127.0.0.1:3301"
+                                client: "172.17.0.1:3301"
             router-b:
                 instances:
                     router-b-001:
                         iproto:
                             listen:
-                                - uri: "127.0.0.2:3301"
+                                - uri: "172.17.0.1:3302"
                             advertise:
-                                client: "127.0.0.2:3301"
+                                client: "172.17.0.1:3302"
             router-c:
                 instances:
                     router-c-001:
                         iproto:
                             listen:
-                                - uri: "127.0.0.3:3301"
+                                - uri: "172.17.0.1:3303"
                             advertise:
-                                client: "127.0.0.3:3301"
+                                client: "172.17.0.1:3303"

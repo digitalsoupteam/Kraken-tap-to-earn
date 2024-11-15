@@ -5,7 +5,6 @@ local log = require("log")
 local fiber = require("fiber")
 local ws = require("websocket")
 local json = require("json")
-local sync = require("sync")
 
 
 local AGGREGATION_PERIODS = { 86400, 604800, 2592000, 7776000 }
