@@ -15,6 +15,7 @@ log.cfg { format = 'json', level = 'verbose' }
 box.cfg {
     txn_isolation = 'read-committed',
     readahead = 64 * 1024,
+    memtx_memory = 8 * 1024 * 1024 * 1024,
     -- readahead = 1 * 1024 * 1024,
 }
 

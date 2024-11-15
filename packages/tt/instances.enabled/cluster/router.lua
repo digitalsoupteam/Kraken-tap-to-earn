@@ -112,13 +112,13 @@ end
 --- @param user_id string|number
 --- @return user | nil
 function get_user(user_id)
-    log.info('get user: %s', json.encode(user_id))
+    -- log.info('get user: %s', json.encode(user_id))
     if type(user_id) == 'string' then
         user_id = uuid.fromstr(user_id)
     end
-    log.info('user_id: %s', user_id)
+    -- log.info('user_id: %s', user_id)
     local res, err = crud.get('users', user_id)
-    log.info('res: %s', json.encode(res))
+    -- log.info('res: %s', json.encode(res))
     if err ~= nil then
         error(err)
     end
@@ -143,7 +143,7 @@ local allowed_update_keys = {
 --- @param params {is_blocked: boolean, level: number, quota_period: number, quota_amount: number, nickname: string}
 --- @return userInfo | nil
 function update_user(user_id, params)
-    log.info('update user: %s with %s', user_id, json.encode(params))
+    -- log.info('update user: %s with %s', user_id, json.encode(params))
     local user = get_user(user_id)
     if user == nil then
         error('user not found')
@@ -178,7 +178,7 @@ function create_new_user(username, ref_user_id)
     local now = os.time()
     local initial_points = 0
     if ref_user_id ~= nil then
-        log.info('ref_user_id: %s', ref_user_id)
+        -- log.info('ref_user_id: %s', ref_user_id)
         initial_points = settings.referral_initial_points
         crud.update(
             'users',
@@ -186,7 +186,7 @@ function create_new_user(username, ref_user_id)
             { { '+', 'points', initial_points } },
             { noreturn = true }
         )
-        log.info('ref_user_id: %s (%s)', ref_user_id, type(ref_user_id))
+        -- log.info('ref_user_id: %s (%s)', ref_user_id, type(ref_user_id))
     end
     local new_user, err = crud.insert_object(
         'users',
@@ -235,7 +235,7 @@ end
 --- @param ref_user_external_id string | nil
 --- @return userInfo
 function get_or_create_user_from_tg(id, username, ref_user_external_id)
-    log.info('get or create user from telegram id: %s (%s)', id, username)
+    -- log.info('get or create user from telegram id: %s (%s)', id, username)
     local ref_user_id = nil
     if ref_user_external_id ~= nil then
         local ref_user = get_user(ref_user_external_id)
@@ -254,17 +254,17 @@ function get_or_create_user_from_tg(id, username, ref_user_external_id)
         username = 'unknown kraken'
     end
     if #res.rows == 0 then
-        log.info('create new user from telegram id: %s (%s) %s', id, username, ref_user_id)
+        -- log.info('create new user from telegram id: %s (%s) %s', id, username, ref_user_id)
         user = create_new_user(username, ref_user_id)
-        log.info('user: %s', json.encode(user))
+        -- log.info('user: %s', json.encode(user))
         user_id = user.user_id
         crud.insert_object('tg2user', { tg_id = id, user_id = user_id}, { noreturn = true })
     else
-        log.info('get user from telegram id: %s (%s)', id, username)
+        -- log.info('get user from telegram id: %s (%s)', id, username)
         user = tomap(res)[1]
         user_id = user.user_id
     end
-    log.info('user_id: %s', json.encode(user)) 
+    -- log.info('user_id: %s', json.encode(user)) 
     local user = get_user_info(user_id)
     if user == nil then
         error('user not found')
@@ -306,7 +306,7 @@ function to_user_info(user, opts)
                 crud.update('users', user.user_id, { { '=', 'session_taps', 0 }, { '=', 'session_until', 0 } })
             end
         end
-        log.info('level: %s for user: %s', json.encode(level), json.encode(user))
+        -- log.info('level: %s for user: %s', json.encode(level), json.encode(user))
         left = level.quota_period
         taps_left = level.quota_amount
     end
@@ -370,7 +370,7 @@ end
 ---@param limit number
 ---@return userInfo[]
 function get_top_referrals(by_user_id, limit)
-    log.info('get top referrals: %s', by_user_id)
+    -- log.info('get top referrals: %s', by_user_id)
     if type(limit) ~= 'number' then
         limit = 100
     end
@@ -399,7 +399,7 @@ end
 ---@param limit number
 ---@return userInfo[]
 function get_top_users(limit)
-    log.info('get top users')
+    -- log.info('get top users')
     if type(limit) ~= 'number' then
         limit = 100
     end
@@ -417,7 +417,7 @@ end
 ---@param limit number
 ---@return {above: userInfo[], below: userInfo[]}
 function get_users_around_of(user_id, limit)
-    log.info('get users around: %s', user_id)
+    -- log.info('get users around: %s', user_id)
     local user_info = get_user_info(user_id)
     if user_info == nil then
         error('user not found')
@@ -489,7 +489,6 @@ end
 ---@param batch {user_id: string, taps: {x: number, y: number}}[]
 ---@return {user_info: userInfo, error: nil}[]
 function register_taps(batch)
-    log.info('register taps (%d)', #batch)
     local results = {}
     local now = os.time()
     for i = 1, #batch do
@@ -497,118 +496,116 @@ function register_taps(batch)
         if validate_batch(batch) == false then
             results[i].error = 'invalid batch item'
         else
-            fiber.create(function()
-                local user_id = batch[i].user_id
-                local taps = batch[i].taps
-                local effective_taps = #taps
-                local user_info = get_user_info(user_id, { fetch_ref_user = true })
-                if user_info == nil then
-                    results[i].error = 'user not found'
+            local user_id = batch[i].user_id
+            local taps = batch[i].taps
+            local effective_taps = #taps
+            local user_info = get_user_info(user_id, { fetch_ref_user = true })
+            if user_info == nil then
+                results[i].error = 'user not found'
+                return
+            else
+                results[i].user_info = user_info
+                if user_info.session_left == 0 then
+                    results[i].error = 'time quota exceeded'
+                    return
+                elseif user_info.session_taps_left <= 0 then
+                    results[i].error = 'taps quota exceeded'
                     return
                 else
-                    results[i].user_info = user_info
-                    if user_info.session_left == 0 then
-                        results[i].error = 'time quota exceeded'
-                        return
-                    elseif user_info.session_taps_left <= 0 then
-                        results[i].error = 'taps quota exceeded'
-                        return
-                    else
-                        local inserted_taps = 0
-                        if user_info.session_taps_left < effective_taps then
-                            effective_taps = user_info.session_taps_left
+                    local inserted_taps = 0
+                    if user_info.session_taps_left < effective_taps then
+                        effective_taps = user_info.session_taps_left
+                    end
+                    for j = 1, #taps do
+                        local tap = taps[j]
+                        if tap['x'] == nil or tap['y'] == nil then
+                            results[i].error = 'invalid tap'
+                            return
                         end
-                        for j = 1, #taps do
-                            local tap = taps[j]
-                            if tap['x'] == nil or tap['y'] == nil then
-                                results[i].error = 'invalid tap'
-                                return
-                            end
-                            inserted_taps = inserted_taps + 1
-                        end
-                        local limited_days = user_info.days_in_row
-                        if limited_days > settings.days_in_row_limit then
-                            limited_days = settings.days_in_row_limit
-                        end
-                        local days_multiplier = limited_days * settings.days_in_row_multiplier
-                        local inserted_points = inserted_taps + inserted_taps * days_multiplier
-                        local days = user_info.days
-                        local days_in_row = user_info.days_in_row
-                        local days_updated_at = user_info.days_updated_at
+                        inserted_taps = inserted_taps + 1
+                    end
+                    local limited_days = user_info.days_in_row
+                    if limited_days > settings.days_in_row_limit then
+                        limited_days = settings.days_in_row_limit
+                    end
+                    local days_multiplier = limited_days * settings.days_in_row_multiplier
+                    local inserted_points = inserted_taps + inserted_taps * days_multiplier
+                    local days = user_info.days
+                    local days_in_row = user_info.days_in_row
+                    local days_updated_at = user_info.days_updated_at
 
-                        for j = 1, #AGGREGATION_PERIODS do
-                            local period = AGGREGATION_PERIODS[j]
-                            local period_time = math.floor(now / period) * period
-                            crud.upsert(
-                                'points_aggs',
-                                { user_info.id, period, period_time, inserted_points },
-                                { { '+', 4, inserted_points } }
-                            )
-                        end
+                    for j = 1, #AGGREGATION_PERIODS do
+                        local period = AGGREGATION_PERIODS[j]
+                        local period_time = math.floor(now / period) * period
+                        crud.upsert(
+                            'points_aggs',
+                            { user_info.id, period, period_time, inserted_points },
+                            { { '+', 4, inserted_points } }
+                        )
+                    end
 
-                        local user_updates = {
-                            { '+', 'session_taps', inserted_taps },
-                            { '+', 'taps',         inserted_taps },
-                            { '+', 'points',       inserted_points },
-                        }
+                    local user_updates = {
+                        { '+', 'session_taps', inserted_taps },
+                        { '+', 'taps',         inserted_taps },
+                        { '+', 'points',       inserted_points },
+                    }
 
-                        if now > days_updated_at + SECONDS_IN_DAY then -- wait one day
-                            days = days + 1                            -- total counter
+                    if now > days_updated_at + SECONDS_IN_DAY then -- wait one day
+                        days = days + 1                            -- total counter
 
-                            if now > days_updated_at + SECONDS_IN_DAY * 2 then
-                                days_in_row = 1               -- if more 2 days, reset to default
-                            else
-                                days_in_row = days_in_row + 1 -- if less 2 days, endless increment
-                            end
-
-                            days_updated_at = now -- save checkpoint
-
-                            table.insert(user_updates, { '=', 'days', days })
-                            table.insert(user_updates, { '=', 'days_in_row', days_in_row })
-                            table.insert(user_updates, { '=', 'days_updated_at', days_updated_at })
+                        if now > days_updated_at + SECONDS_IN_DAY * 2 then
+                            days_in_row = 1               -- if more 2 days, reset to default
+                        else
+                            days_in_row = days_in_row + 1 -- if less 2 days, endless increment
                         end
 
-                        if user_info.session_taps <= 0 then
-                            table.insert(user_updates, { '=', 'session_until', now + user_info.level.quota_period })
-                            results[i].user_info['session_until'] = now + user_info.level.quota_period
-                        end
+                        days_updated_at = now -- save checkpoint
 
-                        crud.update(
-                            'users',
-                            user_info.id,
-                            user_updates,
+                        table.insert(user_updates, { '=', 'days', days })
+                        table.insert(user_updates, { '=', 'days_in_row', days_in_row })
+                        table.insert(user_updates, { '=', 'days_updated_at', days_updated_at })
+                    end
+
+                    if user_info.session_taps <= 0 then
+                        table.insert(user_updates, { '=', 'session_until', now + user_info.level.quota_period })
+                        results[i].user_info['session_until'] = now + user_info.level.quota_period
+                    end
+
+                    crud.update(
+                        'users',
+                        user_info.id,
+                        user_updates,
+                        { noreturn = true }
+                    )
+
+                    -- Referrals
+                    -- 1 level
+                    local ref1_id = user_info.ref_user_id
+                    -- log.info('ref_user: %s', json.encode(user_info))
+                    if ref1_id ~= nil then
+                        local ref1_points = inserted_points * settings.referral_levels[1]
+                        crud.update('users',
+                            ref1_id,
+                            { { '+', 'points', ref1_points } },
                             { noreturn = true }
                         )
-
-                        -- Referrals
-                        -- 1 level
-                        local ref1_id = user_info.ref_user_id
-                        log.info('ref_user: %s', json.encode(user_info))
-                        if ref1_id ~= nil then
-                            local ref1_points = inserted_points * settings.referral_levels[1]
+                        -- 2 level
+                        local ref2_id = user_info.ref_user.ref_user_id
+                        local ref2_points = inserted_points * settings.referral_levels[2]
+                        if ref2_id ~= nil then
                             crud.update('users',
-                                ref1_id,
-                                { { '+', 'points', ref1_points } },
+                                ref2_id,
+                                { { '+', 'points', ref2_points } },
                                 { noreturn = true }
                             )
-                            -- 2 level
-                            local ref2_id = user_info.ref_user.ref_user_id
-                            local ref2_points = inserted_points * settings.referral_levels[2]
-                            if ref2_id ~= nil then
-                                crud.update('users',
-                                    ref2_id,
-                                    { { '+', 'points', ref2_points } },
-                                    { noreturn = true }
-                                )
-                            end
                         end
-                        results[i].user_info['session_taps'] = user_info['session_taps'] + inserted_taps
-                        results[i].user_info['taps'] = user_info['taps'] + inserted_taps
-                        results[i].user_info['points'] = user_info['points'] + inserted_points
-                        results[i].user_info['session_taps_left'] = user_info['session_taps_left'] - inserted_taps
                     end
+                    results[i].user_info['session_taps'] = user_info['session_taps'] + inserted_taps
+                    results[i].user_info['taps'] = user_info['taps'] + inserted_taps
+                    results[i].user_info['points'] = user_info['points'] + inserted_points
+                    results[i].user_info['session_taps_left'] = user_info['session_taps_left'] - inserted_taps
                 end
-            end)
+            end
         end
     end
     return results
@@ -616,9 +613,9 @@ end
 
 function fixture()
     vshard.router.bootstrap()
-    log.info("self-check users")
+    -- log.info("self-check users")
     local ref_user = create_anonymous_user()
-    log.info("ref_user: %s", json.encode(ref_user))
+    -- log.info("ref_user: %s", json.encode(ref_user))
     local user1 = get_or_create_user_from_tg('1', 'user1')
     user1 = get_or_create_user_from_tg('1', 'user1')
     local user2 = get_or_create_user_from_tg('2', 'user2', ref_user.user_id)
@@ -627,7 +624,7 @@ function fixture()
     local user5 = get_or_create_user_from_tg('5', 'user5', user2.user_id)
     local user6 = get_or_create_user_from_tg('5', 'user5', ref_user.user_id)
 
-    log.info("self-check taps")
+    -- log.info("self-check taps")
     user2_taps = {}
     for i = 1, 6000 do
         table.insert(user2_taps, { x = 1, y = 1 })
@@ -662,12 +659,12 @@ function fixture()
         },
     })
 
-    log.info("self-check top users")
+    -- log.info("self-check top users")
     get_top_users(100)
 
-    log.info("self-check top referrals")
+    -- log.info("self-check top referrals")
     get_top_referrals(ref_user.user_id, 100)
 
-    log.info("self-check users around")
+    -- log.info("self-check users around")
     get_users_around_of(ref_user.user_id, 100)
 end
