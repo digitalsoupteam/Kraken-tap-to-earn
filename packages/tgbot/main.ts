@@ -1,6 +1,6 @@
 import { Markup, Telegraf } from "telegraf";
 
-const bot = new Telegraf(process.env.BOT_TOKEN!);
+const bot = new Telegraf(process.env.TOKEN!);
 
 bot.command("start", async (ctx) => {
     await ctx.reply(
@@ -13,8 +13,18 @@ More surprises are on the horizon with our indie game and quest platform. Stay t
 Invite your friends to join the fun—together, we make the Kraken ecosystem thrive and explore endless possibilities!`,
         {
             ...Markup.inlineKeyboard([
-                [Markup.button.webApp("Launch Kraken", "https://game.releasethekraken.io/")],
-                [Markup.button.url("Join community", "https://t.me/releasethekraken")],
+                [
+                    Markup.button.webApp(
+                        "Launch Kraken",
+                        "https://game.releasethekraken.io/"
+                    ),
+                ],
+                [
+                    Markup.button.url(
+                        "Join community",
+                        "https://t.me/releasethekraken"
+                    ),
+                ],
             ]),
         }
     );

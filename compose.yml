@@ -1,36 +1,26 @@
 version: "2"
 
 services:
-    tarantool:
-        image: tarantool-kraken:2.11
-        ulimits:
-            core:
-                soft: -1
-                hard: -1
-        cap_add:
-            - SYS_PTRACE
-
-        restart: always
-
+    tgbot:
         build:
-            context: ./packages/tnt
-
+            context: ./
+            dockerfile: packages/tgbot/Dockerfile
+        env_file:
+            - .env
+        restart: always
         environment:
-            TARANTOOL_USER_NAME: tnt
-            TARANTOOL_USER_PASSWORD: tnt
-            TARANTOOL_SLAB_ALLOC_ARENA: 2
-
-        volumes:
-            - ./coredumps:/coredumps
-            - ./packages/tnt/app.lua:/opt/tarantool/app.lua
-            - tarantool:/var/lib/tarantool
-
-        command: ["tarantool", "app.lua"]
-
+            - NODE_ENV=production
+    gw:
+        build:
+            context: ./
+            dockerfile: packages/gw/Dockerfile
+        restart: always
         ports:
-            - "3300:3000"
-            - "3301:3301"
-
-volumes:
-    tarantool:
-        driver: "local"
+            - "3000:3000"
+        env_file:
+            - .env
+        environment:
+            - NODE_ENV=production
+        extra_hosts:
+            - "host.docker.internal:host-gateway"
+        network_mode: "host"

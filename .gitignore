@@ -17,3 +17,4 @@ dist/
 node_modules/
 packages/tt/instances.enabled/*/.rocks
 packages/gw/public/
+.env
