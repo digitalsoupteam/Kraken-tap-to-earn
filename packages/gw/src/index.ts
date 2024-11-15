@@ -1,5 +1,3 @@
-import { watch } from "fs";
-import html from "bun-plugin-html";
 import { logger } from "@bogeychan/elysia-logger";
 import { jwt } from "@elysiajs/jwt";
 import {
@@ -12,7 +10,6 @@ import {
 } from "./types";
 import { Elysia, t } from "elysia";
 import { env } from "@yolk-oss/elysia-env";
-import staticPlugin from "@elysiajs/static";
 
 import getTarantool, { TntSubscribe } from "./tnt";
 import { handleGetTopUsers, SchemaGetTopUsers } from "./handlers/get_top_users";
@@ -40,7 +37,7 @@ const app = new Elysia()
     .use(
         logger({
             autoLogging: true,
-            level: process.env.LOG_LEVEL ?? "debug",
+            level: process.env.LOG_LEVEL ?? "info",
         })
     )
     // @ts-ignore
@@ -50,9 +47,8 @@ const app = new Elysia()
         }
         console.log("Listening on " + ctx.server.url);
         // @ts-ignore
-        new TntSubscribe(ctx.server).connect();
+        // new TntSubscribe(ctx.server).connect();
     })
-    .use(staticPlugin())
     .use(
         env({
             TOKEN: t.String({
@@ -87,12 +83,6 @@ const app = new Elysia()
             messageCount: 0,
         };
     })
-    // .get("/", () => Bun.file("./public/index.html"))
-    // .get("/ui/*", (ctx) => {
-    //     const path = new URL(ctx.request.url).pathname;
-    //     const file = Bun.file(`./public${path}`);
-    //     return new Response(file);
-    // })
     .post(
         "/api/anonymous_session",
         async (ctx) => {
@@ -179,12 +169,12 @@ const app = new Elysia()
                                 method: t.Literal("getTopReferrals"),
                                 params: SchemaGetTopReferrals,
                             }),
-                            t.Object({
-                                method: t.Literal("subscribe"),
-                            }),
-                            t.Object({
-                                method: t.Literal("unsubscribe"),
-                            }),
+                            // t.Object({
+                            //     method: t.Literal("subscribe"),
+                            // }),
+                            // t.Object({
+                            //     method: t.Literal("unsubscribe"),
+                            // }),
                         ]),
                     ],
                     { additionalProperties: false }
@@ -258,14 +248,14 @@ const app = new Elysia()
                                     message.params
                                 );
                                 break;
-                            case "subscribe":
-                                ws.subscribe(`user:${ws.data.userId}`);
-                                result = "ok";
-                                break;
-                            case "unsubscribe":
-                                ws.unsubscribe(`user:${ws.data.userId}`);
-                                result = "ok";
-                                break;
+                            // case "subscribe":
+                            //     ws.subscribe(`user:${ws.data.userId}`);
+                            //     result = "ok";
+                            //     break;
+                            // case "unsubscribe":
+                            //     ws.unsubscribe(`user:${ws.data.userId}`);
+                            //     result = "ok";
+                            //     break;
                             default:
                                 throw new JsonRpcBaseError(
                                     // @ts-ignore
@@ -309,20 +299,5 @@ const app = new Elysia()
                     ws.send(response);
                 },
             })
-    )
-    .onStart(async () => {
-        let build = async () => {
-            await Bun.build({
-                entrypoints: ["./src/index.html"],
-                outdir: "./public",
-                // minify: true,
-                target: "browser",
-                format: "esm",
-                plugins: [html()],
-            });
-        };
-        await build();
-        const watcher = watch(import.meta.dir, build);
-    });
-
+    );
 app.listen(3000);

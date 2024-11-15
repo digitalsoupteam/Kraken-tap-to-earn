@@ -68,8 +68,8 @@ class Client {
     private tarantool: Tarantool;
     constructor() {
         this.tarantool = new Tarantool({
-            host: "127.0.0.1",
-            port: 3301,
+            host: process.env.TARANTOOL_HOST || "127.0.0.1",
+            port: process.env.TARANTOOL_PORT || 3301,
             lazyConnect: true,
             username: "app",
             password: process.env.APP_PASSWORD || "app",
