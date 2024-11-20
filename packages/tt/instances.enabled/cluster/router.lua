@@ -80,11 +80,12 @@ function tomap(result)
     return items 
 end
 
+
 --- Get or create levels (TODO: cache)
 --- @param level_id number
 --- @return levels
 function get_or_create_levels(level_id)
-    local res, err = crud.get('levels', level_id)
+    local res, err = crud.get('levels', level_id, { mode = 'read' })
     if err ~= nil then
         error(err)
     end
@@ -117,7 +118,7 @@ function get_user(user_id)
         user_id = uuid.fromstr(user_id)
     end
     -- log.info('user_id: %s', user_id)
-    local res, err = crud.get('users', user_id)
+    local res, err = crud.get('users', user_id, { mode = 'read' })
     -- log.info('res: %s', json.encode(res))
     if err ~= nil then
         error(err)
@@ -303,7 +304,7 @@ function to_user_info(user, opts)
             user.session_until = 0
             -- do not update ref_user
             if type(opts) == 'table' and opts['fetch_ref_user'] == true then
-                crud.update('users', user.user_id, { { '=', 'session_taps', 0 }, { '=', 'session_until', 0 } })
+                crud.update('users', user.user_id, { { '=', 'session_taps', 0 }, { '=', 'session_until', 0 } }, { noreturn = true })
             end
         end
         -- log.info('level: %s for user: %s', json.encode(level), json.encode(user))
@@ -387,7 +388,7 @@ function get_top_referrals(by_user_id, limit)
     return results
 end
 
-function reverseList(list)
+function reverse(list)
     local reversed = {}
     for i = #list, 1, -1 do
         table.insert(reversed, list[i])
@@ -409,7 +410,7 @@ function get_top_users(limit)
     for i = 1, #users do
         results[i] = to_user_info(users[i])
     end
-    return reverseList(results)
+    return reverse(results)
 end
 
 ---Get user around (External)
@@ -433,7 +434,7 @@ function get_users_around_of(user_id, limit)
     if err ~= nil then
         error(err)
     end
-    local above = reverseList(tomap(above_res))
+    local above = reverse(tomap(above_res))
     local below_res, err  = crud.select(
         'users',
         { { '<', 'position', { user_info.points, user_info.user_id } } },
