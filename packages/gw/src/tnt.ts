@@ -69,10 +69,10 @@ class Client {
     constructor() {
         this.tarantool = new Tarantool({
             host: process.env.TARANTOOL_HOST || "127.0.0.1",
-            port: process.env.TARANTOOL_PORT || 3301,
+            port: parseInt(process.env.TARANTOOL_PORT ?? "3301"),
             lazyConnect: true,
-            username: "app",
-            password: process.env.APP_PASSWORD || "app",
+            username: process.env.APP_LOGIN || "tnt",
+            password: process.env.APP_PASSWORD || "tnt",
             retryStrategy: function (times) {
                 var delay = Math.min(times * 50, 2000);
                 return delay;
