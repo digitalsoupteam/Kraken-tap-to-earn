@@ -101,7 +101,13 @@ const app = new Elysia()
         async (ctx) => {
             let initData = decodeInitData(ctx.body.initData);
             const secretKey = createWebAppSecret(ctx.env.TOKEN);
-            if (!verifyTelegramWebAppInitData(initData, secretKey)) {
+            if (
+                !verifyTelegramWebAppInitData(
+                    ctx.body.initData,
+                    initData.hash!,
+                    secretKey
+                )
+            ) {
                 return new Response("Invalid initData", { status: 400 });
             }
             let tnt = await getTarantool();

@@ -43,22 +43,17 @@ export function decodeInitData(initDataRaw: string): InitData {
 }
 
 export function verifyTelegramWebAppInitData(
-    initData: InitData,
+    initDataRaw: string,
+    expectedHash: string,
     secretKey: Buffer
 ): boolean {
-    const expectedHash = initData.hash;
+    const params = new URLSearchParams(initDataRaw);
     const checkList: string[] = [];
-    for (const [k, v] of Object.entries({
-        query_id: initData.query_id,
-        user: initData.userRaw,
-        auth_date: initData.auth_date,
-        start_param: initData.start_param,
-        chat_instance: initData.chat_instance,
-        chat_type: initData.chat_type,
-    })) {
-        if (v) {
-            checkList.push(`${k}=${v}`);
+    for (const [k, v] of params.entries()) {
+        if (k == "hash") {
+            continue;
         }
+        checkList.push(`${k}=${v}`);
     }
 
     const checkString: string = checkList.sort().join("\n");
