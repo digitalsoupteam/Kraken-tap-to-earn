@@ -13,6 +13,9 @@ crud.cfg {
     stats_quantiles = true
 }
 
+local level_cache = {
+}
+
 local AGGREGATION_PERIODS = { 86400, 604800, 2592000, 7776000 }
 local SECONDS_IN_DAY = 24 * 60 * 60
 
@@ -77,29 +80,41 @@ function tomap(result)
             end
         end
     end
-    return items 
+    return items
 end
 
-
---- Get or create levels (TODO: cache)
 --- @param level_id number
 --- @return levels
 function get_or_create_levels(level_id)
+    local now = os.time()
+    if level_cache[level_id] ~= nil then
+        local level = level_cache[level_id][1]
+        local expire_at = level_cache[level_id][2]
+        if expire_at and now < expire_at then
+            return level
+        end
+    end
+    -- log.info('get or create levels: %s', level_id)
     local res, err = crud.get('levels', level_id, { mode = 'read' })
+    -- log.info('get level: %s', json.encode(res))
     if err ~= nil then
         error(err)
     end
+    local level = nil
     if #res.rows == 0 then
-        return update_levels(level_id, { quota_period = 120, calm_period = 3600, quota_amount = 6000 })
+        level = update_levels(level_id, { quota_period = 120, calm_period = 3600, quota_amount = 6000 })
+    else
+        level = tomap(res)[1]
     end
-    return tomap(res)[1]
+    level_cache[level_id] = { level, now + 5 }
+    return level
 end
 
 --- Is telegram id exist
 --- @param tg_id number
 --- @return boolean
 function check_tg_exist(tg_id)
-    return crud.count('tg2user', tg_id) > 0
+    return crud.count('users', { tg_id = tg_id }) > 0
 end
 
 --- Is user id exist
@@ -118,16 +133,16 @@ function get_user(user_id)
         user_id = uuid.fromstr(user_id)
     end
     -- log.info('user_id: %s', user_id)
-    local res, err = crud.get('users', user_id, { mode = 'read' })
+    local res, err = crud.get('users', user_id)
     -- log.info('res: %s', json.encode(res))
     if err ~= nil then
         error(err)
     end
     local user = tomap(res)
-    if #user== 0 then
+    if #user == 0 then
         return nil
     end
-    return user[1] 
+    return user[1]
 end
 
 local allowed_update_keys = {
@@ -174,14 +189,17 @@ end
 --- Create new user
 --- @param username string
 --- @param ref_user_id number
+--- @param ref2_user_id number
+--- @param tg_id number
 --- @return number
-function create_new_user(username, ref_user_id)
+function create_new_user(username, ref_user_id, ref2_user_id, tg_id)
     local now = os.time()
     local initial_points = 0
     if ref_user_id ~= nil then
         -- log.info('ref_user_id: %s', ref_user_id)
         initial_points = settings.referral_initial_points
         crud.update(
+
             'users',
             ref_user_id,
             { { '+', 'points', initial_points } },
@@ -200,11 +218,13 @@ function create_new_user(username, ref_user_id)
             taps = 0,
             nickname = username,
             ref_user_id = ref_user_id,
+            ref2_user_id = ref2_user_id,
             wallet = nil,
             points = initial_points,
             days = 1,
             days_in_row = 1,
-            days_updated_at = now
+            days_updated_at = now,
+            tg_id = tg_id,
         }
     )
     if err ~= nil then
@@ -218,59 +238,63 @@ end
 --- @return userInfo
 function create_anonymous_user(ref_user_external_id)
     local ref_user_id = nil
+    local ref_user = nil
     if ref_user_external_id ~= nil then
-        local ref_user = get_user(ref_user_external_id)
+        ref_user = get_user(ref_user_external_id)
         if ref_user == nil then
             error('ref user not found')
         end
         ref_user_id = ref_user.user_id
     end
 
-    local user = create_new_user("unknown kraken", ref_user_id)
-    return get_user_info(user.user_id, { fetch_ref_user = true, fetch_position = false })
+    local ref2_user_id = nil
+    if ref_user ~= nil then
+        ref2_user_id = ref_user.ref_user_id
+    end
+    local user = create_new_user("unknown kraken", ref_user_id, ref2_user_id)
+    if ref_user ~= nil then
+        user.ref_user = to_user_info(ref_user)
+    end
+    -- log.info('user_id: %s', json.encode(user))
+    return to_user_info(user)
 end
 
 --- Get or create user from telegram id (External)
---- @param id string
+--- @param tg_id string
 --- @param username string | nil
 --- @param ref_user_external_id string | nil
 --- @return userInfo
-function get_or_create_user_from_tg(id, username, ref_user_external_id)
-    -- log.info('get or create user from telegram id: %s (%s)', id, username)
+function get_or_create_user_from_tg(tg_id, username, ref_user_external_id)
+    -- log.info('get or create user from telegram id: %s (%s)', tg_id, username)
     local ref_user_id = nil
+    local ref_user = nil
     if ref_user_external_id ~= nil then
-        local ref_user = get_user(ref_user_external_id)
+        ref_user = get_user(ref_user_external_id)
         if ref_user == nil then
             error('ref user not found')
         end
         ref_user_id = ref_user.user_id
     end
-    local res, err = crud.get('tg2user', id)
+    local res, err = crud.select('users', { tg_id = tg_id }, { mode = 'read' })
     if err ~= nil then
         error(err)
     end
-    local user
-    local user_id
     if username == nil then
         username = 'unknown kraken'
     end
+    local user
     if #res.rows == 0 then
         -- log.info('create new user from telegram id: %s (%s) %s', id, username, ref_user_id)
-        user = create_new_user(username, ref_user_id)
-        -- log.info('user: %s', json.encode(user))
-        user_id = user.user_id
-        crud.insert_object('tg2user', { tg_id = id, user_id = user_id}, { noreturn = true })
+        local ref2_user_id = nil
+        if ref_user ~= nil then
+            ref2_user_id = ref_user.ref_user_id
+        end
+        user = create_new_user(username, ref_user_id, ref2_user_id, tg_id)
     else
-        -- log.info('get user from telegram id: %s (%s)', id, username)
         user = tomap(res)[1]
-        user_id = user.user_id
     end
-    -- log.info('user_id: %s', json.encode(user)) 
-    local user = get_user_info(user_id)
-    if user == nil then
-        error('user not found')
-    end
-    return user
+    -- log.info('tg user: %s', json.encode(user))
+    return to_user_info(user)
 end
 
 -- user info from user item
@@ -304,7 +328,8 @@ function to_user_info(user, opts)
             user.session_until = 0
             -- do not update ref_user
             if type(opts) == 'table' and opts['fetch_ref_user'] == true then
-                crud.update('users', user.user_id, { { '=', 'session_taps', 0 }, { '=', 'session_until', 0 } }, { noreturn = true })
+                crud.update('users', user.user_id, { { '=', 'session_taps', 0 }, { '=', 'session_until', 0 } },
+                    { noreturn = true })
             end
         end
         -- log.info('level: %s for user: %s', json.encode(level), json.encode(user))
@@ -313,7 +338,7 @@ function to_user_info(user, opts)
     end
 
     local result = {
-        id =  tostring(user.user_id),
+        id = tostring(user.user_id),
         user_id = user.user_id,
         is_blocked = is_blocked,
         level = level,
@@ -427,15 +452,15 @@ function get_users_around_of(user_id, limit)
         limit = 10
     end
     local above_res, err = crud.select(
-        'users', 
+        'users',
         { { '>', 'position', { user_info.points, user_info.user_id } } },
         { first = limit }
     )
     if err ~= nil then
         error(err)
     end
-    local above = reverse(tomap(above_res))
-    local below_res, err  = crud.select(
+    local above          = reverse(tomap(above_res))
+    local below_res, err = crud.select(
         'users',
         { { '<', 'position', { user_info.points, user_info.user_id } } },
         { first = limit }
@@ -500,7 +525,7 @@ function register_taps(batch)
             local user_id = batch[i].user_id
             local taps = batch[i].taps
             local effective_taps = #taps
-            local user_info = get_user_info(user_id, { fetch_ref_user = true })
+            local user_info = get_user_info(user_id)
             if user_info == nil then
                 results[i].error = 'user not found'
                 return
@@ -571,13 +596,17 @@ function register_taps(batch)
                         table.insert(user_updates, { '=', 'session_until', now + user_info.level.quota_period })
                         results[i].user_info['session_until'] = now + user_info.level.quota_period
                     end
+                    -- log.info('user %s updates: %s', user_info.id, json.encode(user_updates))
 
                     crud.update(
                         'users',
-                        user_info.id,
+                        user_info.user_id,
                         user_updates,
                         { noreturn = true }
                     )
+                    if err ~= nil then
+                        error(err)
+                    end
 
                     -- Referrals
                     -- 1 level
@@ -590,16 +619,16 @@ function register_taps(batch)
                             { { '+', 'points', ref1_points } },
                             { noreturn = true }
                         )
-                        -- 2 level
-                        local ref2_id = user_info.ref_user.ref_user_id
+                    end
+                    -- 2 level
+                    local ref2_id = user_info.ref2_user_id
+                    if ref2_id ~= nil then
                         local ref2_points = inserted_points * settings.referral_levels[2]
-                        if ref2_id ~= nil then
-                            crud.update('users',
-                                ref2_id,
-                                { { '+', 'points', ref2_points } },
-                                { noreturn = true }
-                            )
-                        end
+                        crud.update('users',
+                            ref2_id,
+                            { { '+', 'points', ref2_points } },
+                            { noreturn = true }
+                        )
                     end
                     results[i].user_info['session_taps'] = user_info['session_taps'] + inserted_taps
                     results[i].user_info['taps'] = user_info['taps'] + inserted_taps

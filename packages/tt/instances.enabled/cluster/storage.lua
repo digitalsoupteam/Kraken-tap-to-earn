@@ -1,14 +1,6 @@
 #!/usr/bin/env tarantool
 ---@diagnostic disable: lowercase-global
-local uuid = require("uuid")
 local log = require("log")
-local fiber = require("fiber")
-local ws = require("websocket")
-local json = require("json")
-
-
-local AGGREGATION_PERIODS = { 86400, 604800, 2592000, 7776000 }
-local SECONDS_IN_DAY = 24 * 60 * 60
 
 
 log.cfg { format = 'json', level = 'verbose' }
@@ -48,11 +40,13 @@ box.once('schema', function()
         { name = 'taps',            type = 'number' },
         { name = 'nickname',        type = 'string' },
         { name = "ref_user_id",     type = "uuid",   is_nullable = true },
+        { name = "ref2_user_id",    type = "uuid",   is_nullable = true },
         { name = "wallet",          type = "string", is_nullable = true },
         { name = "points",          type = "number" },
         { name = "days",            type = "number" },
         { name = "days_in_row",     type = "number" },
         { name = "days_updated_at", type = "number" },
+        { name = "tg_id",           type = "string", is_nullable = true },
     })
     users:create_index('user_id',
         { parts = { { 'user_id' } }, unique = true })
@@ -64,20 +58,13 @@ box.once('schema', function()
     })
     users:create_index('ref_user_id',
         { parts = { { 'ref_user_id', exclude_null = true }, { 'points' } }, unique = false })
+    users:create_index('ref2_user_id',
+        { parts = { { 'ref2_user_id', exclude_null = true }, { 'points' } }, unique = false })
     users:create_index('taps', { parts = { { 'taps' } }, unique = false })
     users:create_index('points', { parts = { { 'points' } }, unique = false })
     users:create_index('position', { parts = { { 'points' }, { 'user_id' } }, unique = false })
     users:create_index('bucket_id', { parts = { { 'bucket_id' } }, unique = false, type = 'tree' })
-
-    local tg2user = box.schema.create_space('tg2user', { engine = 'memtx' })
-    tg2user:format({
-        { name = 'tg_id',     type = 'string' },
-        { name = 'bucket_id', type = 'number' },
-        { name = 'user_id',   type = 'uuid' },
-    })
-    tg2user:create_index('pk', { parts = { { 'tg_id' } }, unique = true })
-    tg2user:create_index('user_id', { parts = { { 'user_id' } }, unique = true })
-    tg2user:create_index('bucket_id', { parts = { { 'bucket_id' } }, unique = false, type = 'tree' })
+    users:create_index('tg_id', { parts = { { 'tg_id', exclude_null = true } }, unique = true })
 
     local sessions = box.schema.create_space('sessions', { engine = 'memtx' })
     sessions:format({
