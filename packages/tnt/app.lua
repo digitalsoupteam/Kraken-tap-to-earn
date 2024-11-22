@@ -564,6 +564,45 @@ function validate_batch(batch)
     return true
 end
 
+function refresh(user_id)
+    local now = os.time()
+    local user_info = get_user_info(user_id, { fetch_ref_user = false })
+
+    if user_info == nil then
+        error('user not found')
+    end
+
+    local days = user_info.days
+    local days_in_row = user_info.days_in_row
+    local days_updated_at = user_info.days_updated_at
+
+    local result = user_info
+    if now > days_updated_at + SECONDS_IN_DAY then -- wait one day
+        days = days + 1                            -- total counter
+
+        if now > days_updated_at + SECONDS_IN_DAY * 2 then
+            days_in_row = 1               -- if more 2 days, reset to default
+        else
+            days_in_row = days_in_row + 1 -- if less 2 days, endless increment
+        end
+
+        days_updated_at = now -- save checkpoint
+
+        local user_updates = {}
+        table.insert(user_updates, { '=', 'days', days })
+        table.insert(user_updates, { '=', 'days_in_row', days_in_row })
+        table.insert(user_updates, { '=', 'days_updated_at', days_updated_at })
+        
+        box.space.users:update({ user_info.id }, user_updates)
+
+        result.days = days
+        result.days_in_row = days_in_row
+        result.days_updated_at = days_updated_at
+    end
+
+    return result
+end
+
 ---Register taps (External)
 ---@param batch {user_id: string, taps: {x: number, y: number}}[]
 ---@return {user_info: userInfo, error: nil}[]

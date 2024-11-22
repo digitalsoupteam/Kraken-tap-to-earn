@@ -32,6 +32,7 @@ import {
     handleGetUsersAroundOf,
     SchemaGetUsersAroundOf,
 } from "./handlers/get_around_of";
+import { handleRefresh } from "./handlers/refresh";
 
 const app = new Elysia()
     .use(
@@ -156,6 +157,9 @@ const app = new Elysia()
                                 method: t.Literal("getUser"),
                             }),
                             t.Object({
+                                method: t.Literal("refresh"),
+                            }),
+                            t.Object({
                                 method: t.Literal("sendTaps"),
                                 params: SchemaSendTaps,
                             }),
@@ -229,6 +233,9 @@ const app = new Elysia()
                                 break;
                             case "getUser":
                                 result = await handleGetUser(ws, {});
+                                break;
+                            case "refresh":
+                                result = await handleRefresh(ws, {});
                                 break;
                             case "updateProfile":
                                 result = await handleSendUpdateProfile(
