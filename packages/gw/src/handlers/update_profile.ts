@@ -14,7 +14,7 @@ export type SendUpdateProfileError = JsonRpcError<
 export const SchemaSendUpdateProfile = t.Object(
     {
         nickname: t.Optional(t.String()),
-        wallet: t.Optional(t.String({ pattern: "^[a-zA-Z0-9]+$" })),
+        wallet: t.Optional(t.String({ pattern: "^[1-9A-HJ-NP-Za-km-z]{32,44}$" })),
     },
     { additionalProperties: false }
 );
@@ -24,6 +24,7 @@ export async function handleSendUpdateProfile(
     ws: WS,
     data: SendUpdateProfileRequest
 ): Promise<SendUpdateProfileResponse> {
+    data.wallet = data.wallet?.toLowerCase();
     let tnt = await getTarantool();
     return await tnt.updateProfile(ws.data.userId, data);
 }
