@@ -29,12 +29,19 @@ iproto:
         sharding:
             login: storage
 
+metrics:
+    include: [all]
+    labels:
+        alias: kraken
+
 sharding:
     bucket_count: 1000
 
 groups:
     storages:
-        roles: [roles.crud-storage]
+        roles:
+            - roles.crud-storage
+            - roles.metrics-export
         app:
             module: storage
         sharding:
@@ -49,10 +56,28 @@ groups:
                         iproto:
                             listen:
                                 - uri: "172.17.0.1:3311"
+                        roles_cfg:
+                            roles.metrics-export:
+                                http:
+                                    - listen: "127.0.0.1:8311"
+                                      endpoints:
+                                          - path: /metrics/prometheus/
+                                            format: prometheus
+                                          - path: /metrics/json
+                                            format: json
                     storage-a-002:
                         iproto:
                             listen:
                                 - uri: "172.17.0.1:3312"
+                        roles_cfg:
+                            roles.metrics-export:
+                                http:
+                                    - listen: "127.0.0.1:8312"
+                                      endpoints:
+                                          - path: /metrics/prometheus/
+                                            format: prometheus
+                                          - path: /metrics/json
+                                            format: json
             storage-b:
                 leader: storage-b-001
                 instances:
@@ -60,10 +85,28 @@ groups:
                         iproto:
                             listen:
                                 - uri: "172.17.0.1:3321"
+                        roles_cfg:
+                            roles.metrics-export:
+                                http:
+                                    - listen: "127.0.0.1:8321"
+                                      endpoints:
+                                          - path: /metrics/prometheus/
+                                            format: prometheus
+                                          - path: /metrics/json
+                                            format: json
                     storage-b-002:
                         iproto:
                             listen:
                                 - uri: "172.17.0.1:3322"
+                        roles_cfg:
+                            roles.metrics-export:
+                                http:
+                                    - listen: "127.0.0.1:8322"
+                                      endpoints:
+                                          - path: /metrics/prometheus/
+                                            format: prometheus
+                                          - path: /metrics/json
+                                            format: json
             storage-c:
                 leader: storage-c-001
                 instances:
@@ -71,13 +114,38 @@ groups:
                         iproto:
                             listen:
                                 - uri: "172.17.0.1:3331"
+                        roles_cfg:
+                            roles.metrics-export:
+                                http:
+                                    - listen: "127.0.0.1:8331"
+                                      endpoints:
+                                          - path: /metrics/prometheus/
+                                            format: prometheus
+                                          - path: /metrics/json
+                                            format: json
                     storage-c-002:
                         iproto:
                             listen:
                                 - uri: "172.17.0.1:3332"
+                        roles_cfg:
+                            roles.metrics-export:
+                                http:
+                                    - listen: "127.0.0.1:8332"
+                                      endpoints:
+                                          - path: /metrics/prometheus/
+                                            format: prometheus
+                                          - path: /metrics/json
+                                            format: json
 
     routers:
-        roles: [roles.crud-router]
+        roles:
+            - roles.crud-router
+            - roles.metrics-export
+        roles_cfg:
+            roles.crud-router:
+                stats: true
+                stats_driver: metrics
+                stats_quantiles: true
         app:
             module: router
         sharding:
@@ -89,21 +157,132 @@ groups:
                         iproto:
                             listen:
                                 - uri: "172.17.0.1:3301"
-                            advertise:
-                                client: "172.17.0.1:3301"
+                        roles_cfg:
+                            roles.metrics-export:
+                                http:
+                                    - listen: "127.0.0.1:8301"
+                                      endpoints:
+                                          - path: /metrics/prometheus/
+                                            format: prometheus
+                                          - path: /metrics/json
+                                            format: json
             router-b:
                 instances:
                     router-b-001:
                         iproto:
                             listen:
                                 - uri: "172.17.0.1:3302"
-                            advertise:
-                                client: "172.17.0.1:3302"
+                        roles_cfg:
+                            roles.metrics-export:
+                                http:
+                                    - listen: "127.0.0.1:8302"
+                                      endpoints:
+                                          - path: /metrics/prometheus/
+                                            format: prometheus
+                                          - path: /metrics/json
+                                            format: json
             router-c:
                 instances:
                     router-c-001:
                         iproto:
                             listen:
                                 - uri: "172.17.0.1:3303"
-                            advertise:
-                                client: "172.17.0.1:3303"
+                        roles_cfg:
+                            roles.metrics-export:
+                                http:
+                                    - listen: "127.0.0.1:8303"
+                                      endpoints:
+                                          - path: /metrics/prometheus/
+                                            format: prometheus
+                                          - path: /metrics/json
+                                            format: json
+            router-d:
+                instances:
+                    router-d-001:
+                        iproto:
+                            listen:
+                                - uri: "172.17.0.1:3304"
+                        roles_cfg:
+                            roles.metrics-export:
+                                http:
+                                    - listen: "127.0.0.1:8304"
+                                      endpoints:
+                                          - path: /metrics/prometheus/
+                                            format: prometheus
+                                          - path: /metrics/json
+                                            format: json
+            router-e:
+                instances:
+                    router-e-001:
+                        iproto:
+                            listen:
+                                - uri: "172.17.0.1:3305"
+                        roles_cfg:
+                            roles.metrics-export:
+                                http:
+                                    - listen: "127.0.0.1:8305"
+                                      endpoints:
+                                          - path: /metrics/prometheus/
+                                            format: prometheus
+                                          - path: /metrics/json
+                                            format: json
+            router-f:
+                instances:
+                    router-f-001:
+                        iproto:
+                            listen:
+                                - uri: "172.17.0.1:3306"
+                        roles_cfg:
+                            roles.metrics-export:
+                                http:
+                                    - listen: "127.0.0.1:8306"
+                                      endpoints:
+                                          - path: /metrics/prometheus/
+                                            format: prometheus
+                                          - path: /metrics/json
+                                            format: json
+            router-g:
+                instances:
+                    router-g-001:
+                        iproto:
+                            listen:
+                                - uri: "172.17.0.1:3307"
+                        roles_cfg:
+                            roles.metrics-export:
+                                http:
+                                    - listen: "127.0.0.1:8307"
+                                      endpoints:
+                                          - path: /metrics/prometheus/
+                                            format: prometheus
+                                          - path: /metrics/json
+                                            format: json
+            router-h:
+                instances:
+                    router-h-001:
+                        iproto:
+                            listen:
+                                - uri: "172.17.0.1:3308"
+                        roles_cfg:
+                            roles.metrics-export:
+                                http:
+                                    - listen: "127.0.0.1:8308"
+                                      endpoints:
+                                          - path: /metrics/prometheus/
+                                            format: prometheus
+                                          - path: /metrics/json
+                                            format: json
+            router-j:
+                instances:
+                    router-j-001:
+                        iproto:
+                            listen:
+                                - uri: "172.17.0.1:3309"
+                        roles_cfg:
+                            roles.metrics-export:
+                                http:
+                                    - listen: "127.0.0.1:8309"
+                                      endpoints:
+                                          - path: /metrics/prometheus/
+                                            format: prometheus
+                                          - path: /metrics/json
+                                            format: json
