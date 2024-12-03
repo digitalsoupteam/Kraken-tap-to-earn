@@ -10,18 +10,20 @@ services:
             - 9090:9090
         volumes:
             - ./packages/prometheus:/etc/prometheus
-        networks:
-            - monitoring_network
+        extra_hosts:
+            - "host.docker.internal:host-gateway"
+        network_mode: "bridge"
     grafana:
         env_file:
             - .env
         image: grafana/grafana
         container_name: grafana
         ports:
-            - 3000:3000
+            - 3001:3000
         restart: unless-stopped
-        networks:
-            - monitoring_network
+        extra_hosts:
+            - "host.docker.internal:host-gateway"
+        network_mode: "bridge"
     tgbot:
         build:
             context: ./
@@ -44,4 +46,4 @@ services:
             - NODE_ENV=production
         extra_hosts:
             - "host.docker.internal:host-gateway"
-        network_mode: "host"
+        network_mode: "bridge"
