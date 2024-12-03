@@ -429,13 +429,9 @@ function get_top_users(limit)
     if type(limit) ~= 'number' then
         limit = 100
     end
-    local users = tomap(crud.select('users', { { '>', 'points', 0 } }, { first = limit }))
-    fiber.yield()
-    local results = {}
-    for i = 1, #users do
-        results[i] = to_user_info(users[i])
-    end
-    return reverse(results)
+    local max_point = tomap(crud.max('users',  'points'  ))[1].points
+    local users = tomap(crud.select('users', { { '<=', 'points', max_points } }, { first = limit }))
+    return users
 end
 
 ---Get user around (External)
