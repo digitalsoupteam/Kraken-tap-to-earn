@@ -10,5 +10,5 @@ RUN bun install --production
 # 
 # # run the app
 USER bun
-EXPOSE 3000/tcp
+EXPOSE 8080/tcp
 ENTRYPOINT [ "bun", "run", "/app/packages/gw/src/index.ts" ]

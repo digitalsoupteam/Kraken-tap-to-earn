@@ -13,6 +13,14 @@ crud.cfg {
     stats_quantiles = true
 }
 
+box.cfg {
+    -- txn_isolation = 'read-committed',
+    -- readahead = 64 * 1024,
+    -- memtx_memory = 1 * 1024 * 1024 * 1024,
+    slab_alloc_arena = 4.0
+    -- readahead = 1 * 1024 * 1024,
+}
+
 local level_cache = {
 }
 
@@ -275,7 +283,7 @@ function get_or_create_user_from_tg(tg_id, username, ref_user_external_id)
         end
         ref_user_id = ref_user.user_id
     end
-    local res, err = crud.select('users', { tg_id = tg_id }, { mode = 'read' })
+    local res, err = crud.select('users', {{ '=',  'tg_id', tg_id }}, { mode = 'read' })
     if err ~= nil then
         error(err)
     end
@@ -405,7 +413,7 @@ function get_top_referrals(by_user_id, limit)
         error('user not found')
     end
     fiber.yield()
-    local users = tomap(crud.select('users', { { '=', 'ref_user_id', user.user_id } }, { first = limit }))
+    local users = tomap(crud.select('users', { { '=', 'ref_user_id', user.user_id } }, { first = limit, mode = 'read' }))
     local results = {}
     for i = 1, #users do
         results[i] = to_user_info(users[i])
@@ -430,7 +438,7 @@ function get_top_users(limit)
         limit = 100
     end
     local max_point = tomap(crud.max('users',  'points'  ))[1].points
-    local users = tomap(crud.select('users', { { '<=', 'points', max_points } }, { first = limit }))
+    local users = tomap(crud.select('users', { { '<=', 'points', max_points } }, { first = limit, mode = 'read' }))
     return users
 end
 
@@ -450,7 +458,7 @@ function get_users_around_of(user_id, limit)
     local above_res, err = crud.select(
         'users',
         { { '>', 'position', { user_info.points, user_info.user_id } } },
-        { first = limit }
+        { first = limit, mode = 'read' }
     )
     if err ~= nil then
         error(err)
@@ -459,7 +467,7 @@ function get_users_around_of(user_id, limit)
     local below_res, err = crud.select(
         'users',
         { { '<', 'position', { user_info.points, user_info.user_id } } },
-        { first = limit }
+        { first = limit, mode = 'read' }
     )
     if err ~= nil then
         error(err)
