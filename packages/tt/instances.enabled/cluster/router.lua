@@ -2,6 +2,7 @@ local vshard = require('vshard')
 local uuid = require("uuid")
 local log = require("log")
 local fiber = require("fiber")
+local fun = require("fun")
 local ws = require("websocket")
 local json = require("json")
 local crud = require("crud")
@@ -174,20 +175,15 @@ function update_user(user_id, params)
     end
     local update = {}
     for key, value in pairs(params) do
-        for i = 1, #allowed_update_keys do
-            if allowed_update_keys[i] == key then
-                break
-            end
-            if i == #allowed_update_keys then
-                error('invalid key')
-            end
+	if fun.index(key, allowed_update_keys) == nil then 
+	    error('invalid key: ' .. key)
         end
         table.insert(update, { '=', key, value })
     end
     if #update == 0 then
         error('nothing to update')
     end
-    crud.update(users, { { '=', 'user_id', user_id } }, update)
+    crud.update('users', user.user_id, update)
     return get_user_info(user_id)
 end
 
